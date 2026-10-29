@@ -10,6 +10,13 @@ class AppColors {
   static const Color amberWarning = Color(0xFFF59E0B);
   static const Color violetAccent = Color(0xFF8B5CF6);
 
+  // Luxury Gold & Obsidian Palette
+  static const Color royalGold = Color(0xFFFFD700);
+  static const Color royalGoldLight = Color(0xFFFFE57F);
+  static const Color royalGoldDark = Color(0xFFB8860B);
+  static const Color obsidianBlack = Color(0xFF060608);
+  static const Color obsidianSurface = Color(0xFF101014);
+
   // Apple iOS Dark Mode System Tokens (Direct reference to iOS Settings)
   static const Color darkBackground = Color(0xFF000000); // True OLED Pure Black
   static const Color darkBackgroundSecondary = Color(0xFF1C1C1E); // Apple Secondary System Grouped Background
@@ -46,6 +53,12 @@ class AppColors {
   static const Color lightTextMuted = Color(0xFF8E8E93);
 
   // Gradients
+  static const LinearGradient luxuryGoldGradient = LinearGradient(
+    colors: [Color(0xFFFFDF00), Color(0xFFE5A93C), Color(0xFFB8860B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient royalGradient = LinearGradient(
     colors: [royalIndigo, electricCyan],
     begin: Alignment.topLeft,

@@ -32,4 +32,10 @@ class HapticHelper {
       HapticFeedback.heavyImpact();
     }
   }
+
+  static void error() {
+    if (enabled) {
+      HapticFeedback.mediumImpact();
+    }
+  }
 }

@@ -83,4 +83,24 @@ class SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.keyHapticsEnabled, enabled);
   }
+
+  Future<bool> hasCompletedIntro() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(AppConstants.keyHasCompletedIntro) ?? false;
+  }
+
+  Future<void> setHasCompletedIntro(bool completed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyHasCompletedIntro, completed);
+  }
+
+  Future<bool> isAuthenticated() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(AppConstants.keyIsAuthenticated) ?? false;
+  }
+
+  Future<void> setIsAuthenticated(bool authenticated) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyIsAuthenticated, authenticated);
+  }
 }

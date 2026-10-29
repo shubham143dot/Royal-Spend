@@ -12,6 +12,7 @@ import 'package:royal_spend/providers/expense_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
+import 'package:royal_spend/ui/screens/intro/intro_screen.dart';
 import 'package:royal_spend/ui/screens/main_navigation_screen.dart';
 
 void main() async {
@@ -103,7 +104,9 @@ class RoyalSpendApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
-      home: const MainNavigationScreen(),
+      home: settings.hasCompletedIntro
+          ? const MainNavigationScreen()
+          : const IntroScreen(),
     );
   }
 }

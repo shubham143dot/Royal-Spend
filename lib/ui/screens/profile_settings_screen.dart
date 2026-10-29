@@ -17,6 +17,7 @@ import '../../providers/settings_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/liquid_pop.dart';
 import '../widgets/set_budget_sheet.dart';
+import 'intro/intro_screen.dart';
 
 class ProfileSettingsScreen extends StatelessWidget {
   const ProfileSettingsScreen({super.key});
@@ -221,6 +222,22 @@ class ProfileSettingsScreen extends StatelessWidget {
                       subtitle: 'Populate expenses across categories',
                       isDark: isDark,
                       onTap: () => _confirmSeedData(context, expenseProvider),
+                    ),
+                    _buildDivider(isDark),
+                    _buildSettingsTile(
+                      icon: CupertinoIcons.play_circle_fill,
+                      iconColor: AppColors.royalGold,
+                      title: 'Replay Intro & Brand Video',
+                      subtitle: 'Experience the Royal Spend cinematic intro',
+                      isDark: isDark,
+                      onTap: () {
+                        HapticHelper.mediumImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const IntroScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildDivider(isDark),
                     _buildSettingsTile(

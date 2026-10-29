@@ -27,6 +27,12 @@ class SettingsProvider extends ChangeNotifier {
   bool _hapticsEnabled = true;
   bool get hapticsEnabled => _hapticsEnabled;
 
+  bool _hasCompletedIntro = false;
+  bool get hasCompletedIntro => _hasCompletedIntro;
+
+  bool _isAuthenticated = false;
+  bool get isAuthenticated => _isAuthenticated;
+
   Future<void> init() async {
     _themeMode = await _repository.getThemeMode();
     _currencySymbol = await _repository.getCurrencySymbol();
@@ -34,7 +40,35 @@ class SettingsProvider extends ChangeNotifier {
     _userName = await _repository.getUserName();
     _monthlyBudget = await _repository.getMonthlyBudget();
     _hapticsEnabled = await _repository.isHapticsEnabled();
+    _hasCompletedIntro = await _repository.hasCompletedIntro();
+    _isAuthenticated = await _repository.isAuthenticated();
     HapticHelper.enabled = _hapticsEnabled;
+    notifyListeners();
+  }
+
+  Future<void> setHasCompletedIntro(bool completed) async {
+    _hasCompletedIntro = completed;
+    await _repository.setHasCompletedIntro(completed);
+    notifyListeners();
+  }
+
+  Future<void> setIsAuthenticated(bool authenticated) async {
+    _isAuthenticated = authenticated;
+    await _repository.setIsAuthenticated(authenticated);
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    _isAuthenticated = false;
+    await _repository.setIsAuthenticated(false);
+    notifyListeners();
+  }
+
+  Future<void> resetIntroForTesting() async {
+    _hasCompletedIntro = false;
+    _isAuthenticated = false;
+    await _repository.setHasCompletedIntro(false);
+    await _repository.setIsAuthenticated(false);
     notifyListeners();
   }
 

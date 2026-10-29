@@ -18,6 +18,9 @@ class GlassTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
   final bool warning;
+  final bool obscureText;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const GlassTextField({
     super.key,
@@ -34,6 +37,9 @@ class GlassTextField extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.warning = false,
+    this.obscureText = false,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -129,6 +135,9 @@ class _GlassTextFieldState extends State<GlassTextField> {
         focusNode: _focusNode,
         autofocus: widget.autofocus,
         keyboardType: widget.keyboardType,
+        textInputAction: widget.textInputAction,
+        onFieldSubmitted: widget.onFieldSubmitted,
+        obscureText: widget.obscureText,
         maxLines: widget.maxLines,
         style: widget.textStyle ??
             AppTextStyles.bodyLarge.copyWith(

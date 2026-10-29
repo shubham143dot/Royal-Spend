@@ -97,33 +97,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            DateFormatter.getGreeting(),
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                              fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              DateFormatter.getGreeting(),
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text('✨', style: TextStyle(fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        settings.userName,
-                        style: AppTextStyles.titleLarge.copyWith(
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.4,
+                            const SizedBox(width: 4),
+                            const Text('✨', style: TextStyle(fontSize: 14)),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          settings.userName,
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   // Current Month Tag
                   LiquidPop(
                     pressedScale: 0.94,
@@ -613,10 +618,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'MONTHLY BUDGET',
@@ -636,6 +645,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(CupertinoIcons.pencil, size: 10, color: isDark ? AppColors.electricCyan : AppColors.royalIndigo),
                           const SizedBox(width: 3),
