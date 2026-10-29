@@ -6,7 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/auth/firebase_auth_gateway.dart';
 import '../../../core/services/auth/royal_auth_gateway.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../../../core/theme/spring_curves.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../../providers/settings_provider.dart';
@@ -84,8 +86,13 @@ class _LoginScreenState extends State<LoginScreen>
   String? _statusMessage;
   bool _statusIsError = true;
 
-  RoyalAuthGateway get _authGateway =>
-      widget.authGateway ?? const UnconfiguredRoyalAuthGateway();
+  RoyalAuthGateway get _authGateway {
+    if (widget.authGateway != null) return widget.authGateway!;
+    if (Firebase.apps.isNotEmpty) {
+      return FirebaseAuthGateway();
+    }
+    return const UnconfiguredRoyalAuthGateway();
+  }
 
   @override
   void initState() {

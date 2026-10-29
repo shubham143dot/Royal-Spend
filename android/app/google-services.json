@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "726663632525",
+    "project_id": "royal-spend",
+    "storage_bucket": "royal-spend.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:726663632525:android:22c7aae27b6e818fc4b4c4",
+        "android_client_info": {
+          "package_name": "com.royalshubham.royalspend.royal_spend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8h2mnUQN0vSgVDaBEGpevtrzxLhmnL78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
