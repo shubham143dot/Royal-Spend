@@ -99,3 +99,4 @@ class FirebaseAuthGateway implements RoyalAuthGateway {
     }
   }
 }
+

@@ -84,3 +84,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'royal-spend.firebasestorage.app',
   );
 }
+

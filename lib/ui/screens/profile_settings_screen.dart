@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,8 +17,10 @@ import '../../core/utils/haptic_helper.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/google_brand_icon.dart';
 import '../widgets/liquid_pop.dart';
 import '../widgets/set_budget_sheet.dart';
+import 'auth/login_screen.dart';
 import 'intro/intro_screen.dart';
 
 class ProfileSettingsScreen extends StatelessWidget {
@@ -54,6 +58,26 @@ class ProfileSettingsScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
               child: _buildProfileCard(context, settings, isDark),
+            ),
+          ),
+
+          // Section 0: Account & Authentication
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
+              child: Text(
+                'ACCOUNT & AUTHENTICATION',
+                style: AppTextStyles.labelUppercase.copyWith(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: _buildAccountCard(context, settings, isDark),
             ),
           ),
 
@@ -331,7 +355,37 @@ class ProfileSettingsScreen extends StatelessWidget {
     );
   }
 
+  User? _getFirebaseUser() {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        return FirebaseAuth.instance.currentUser;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Widget _buildProfileCard(BuildContext context, SettingsProvider settings, bool isDark) {
+    final user = _getFirebaseUser();
+    final isGoogle = user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+    final isEmail = user?.providerData.any((p) => p.providerId == 'password') ?? false;
+    final displayName = (user?.displayName != null && user!.displayName!.isNotEmpty)
+        ? user.displayName!
+        : (settings.userName.isNotEmpty ? settings.userName : 'Royal Member');
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'R';
+
+    final String subtitleText;
+    if (isGoogle) {
+      subtitleText = '${user?.email ?? "Google Account"} • Google';
+    } else if (isEmail) {
+      subtitleText = '${user?.email ?? "Email Account"} • Email & Password';
+    } else if (user?.email != null) {
+      subtitleText = '${user!.email} • Cloud Account';
+    } else if (settings.isAuthenticated) {
+      subtitleText = 'Royal Spend • Authenticated';
+    } else {
+      subtitleText = 'Royal Spend • Local Offline';
+    }
+
     return LiquidPop(
       pressedScale: 0.985,
       onTap: () => _showNameDialog(context, settings),
@@ -349,7 +403,7 @@ class ProfileSettingsScreen extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  settings.userName.isNotEmpty ? settings.userName[0].toUpperCase() : 'S',
+                  initial,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -364,7 +418,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    settings.userName,
+                    displayName,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -374,12 +428,14 @@ class ProfileSettingsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Royal Spend • Local Offline',
+                    subtitleText,
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextMuted,
                       fontWeight: FontWeight.w400,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -391,6 +447,151 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAccountCard(BuildContext context, SettingsProvider settings, bool isDark) {
+    final user = _getFirebaseUser();
+    final isGoogle = user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+    final isEmail = user?.providerData.any((p) => p.providerId == 'password') ?? false;
+    final userEmail = user?.email;
+
+    return GlassCard(
+      isDark: isDark,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        children: [
+          if (user != null) ...[
+            _buildSettingsTile(
+              icon: isGoogle ? Icons.g_mobiledata_rounded : CupertinoIcons.mail_solid,
+              customLeading: isGoogle
+                  ? Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(7.5),
+                        color: Colors.white,
+                      ),
+                      child: const Center(child: GoogleBrandIcon(size: 18)),
+                    )
+                  : null,
+              iconColor: isGoogle ? AppColors.appleBlue : AppColors.royalGold,
+              title: (user.displayName != null && user.displayName!.isNotEmpty)
+                  ? user.displayName!
+                  : (userEmail ?? 'Authenticated User'),
+              subtitle: isGoogle
+                  ? 'Connected via Google ($userEmail)'
+                  : isEmail
+                      ? 'Connected via Email & Password ($userEmail)'
+                      : 'Firebase Cloud Account ($userEmail)',
+              trailingText: 'Active',
+              isDark: isDark,
+              onTap: () {},
+            ),
+            _buildDivider(isDark),
+          ] else ...[
+            _buildSettingsTile(
+              icon: CupertinoIcons.person_crop_circle_badge_checkmark,
+              iconColor: AppColors.royalGold,
+              title: 'Sign In / Connect Account',
+              subtitle: 'Link Google or Email for Cloud Backup & Sync',
+              isDark: isDark,
+              onTap: () {
+                HapticHelper.mediumImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+            ),
+            _buildDivider(isDark),
+          ],
+          _buildSettingsTile(
+            icon: CupertinoIcons.square_arrow_left_fill,
+            iconColor: AppColors.appleRed,
+            title: 'Log Out',
+            titleColor: AppColors.appleRed,
+            subtitle: isGoogle
+                ? 'Sign out of Google account ($userEmail)'
+                : isEmail
+                    ? 'Sign out of Email account ($userEmail)'
+                    : 'Sign out and return to login screen',
+            isDark: isDark,
+            onTap: () => _confirmLogout(
+              context,
+              settings,
+              isGoogle: isGoogle,
+              isEmail: isEmail,
+              email: userEmail,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmLogout(
+    BuildContext context,
+    SettingsProvider settings, {
+    bool isGoogle = false,
+    bool isEmail = false,
+    String? email,
+  }) {
+    HapticHelper.mediumImpact();
+
+    final accountLabel = isGoogle
+        ? 'Google account${email != null ? " ($email)" : ""}'
+        : isEmail
+            ? 'Email account${email != null ? " ($email)" : ""}'
+            : 'active session';
+
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Log Out of Royal Spend?'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            'Are you sure you want to log out from your $accountLabel?\n\nYour local transactions and travel plans will remain safely preserved on this device.',
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              HapticHelper.heavyImpact();
+
+              try {
+                if (Firebase.apps.isNotEmpty) {
+                  await FirebaseAuth.instance.signOut();
+                }
+              } catch (e) {
+                debugPrint('Firebase signOut error: $e');
+              }
+
+              await settings.logout();
+              if (!context.mounted) return;
+
+              Navigator.of(context).pushAndRemoveUntil<void>(
+                PageRouteBuilder<void>(
+                  transitionDuration: const Duration(milliseconds: 400),
+                  pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                ),
+                (route) => false,
+              );
+            },
+            child: const Text('Log Out'),
+          ),
+        ],
       ),
     );
   }
@@ -725,6 +926,8 @@ class ProfileSettingsScreen extends StatelessWidget {
     required String title,
     String? subtitle,
     String? trailingText,
+    Color? titleColor,
+    Widget? customLeading,
     required bool isDark,
     required VoidCallback onTap,
   }) {
@@ -735,17 +938,18 @@ class ProfileSettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7.5),
-                color: iconColor,
-              ),
-              child: Center(
-                child: Icon(icon, size: 17, color: Colors.white),
-              ),
-            ),
+            customLeading ??
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7.5),
+                    color: iconColor,
+                  ),
+                  child: Center(
+                    child: Icon(icon, size: 17, color: Colors.white),
+                  ),
+                ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -756,7 +960,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      color: titleColor ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
                       letterSpacing: -0.2,
                     ),
                   ),
