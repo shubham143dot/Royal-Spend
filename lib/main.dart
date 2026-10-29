@@ -36,7 +36,7 @@ void main() async {
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: Colors.transparent,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarBrightness: Brightness.light,
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
 
@@ -68,13 +68,38 @@ void main() async {
         ChangeNotifierProvider.value(value: expenseProvider),
         ChangeNotifierProvider.value(value: quickLogProvider),
         ChangeNotifierProvider.value(value: travelProvider),
-        Provider(
-          create: (_) => OCRService(parser: ReceiptParser()),
-        ),
       ],
       child: const RoyalSpendApp(),
     ),
   );
+
+  Future.microtask(() async {
+    try {
+      final ocr = MlKitOcrService();
+      const testPath = '/data/user/0/com.royalshubham.royalspend.royal_spend/cache/scaled_1000328450.jpg';
+      if (await File(testPath).exists()) {
+        final res = await ocr.processImage(testPath);
+        debugPrint('PROBE 1000328450 RAW: """${res.fullText}"""');
+        for (final l in res.lines) {
+          debugPrint('PROBE 1000328450 LINE: "${l.text}"');
+        }
+        final p = ReceiptParser.parse(res.fullText, imagePath: testPath, ocrLines: res.lines);
+        debugPrint('PROBE 1000328450 PARSED: amount=${p.amount}, status=${p.amountStatus}, candidates=${p.candidateAmounts}');
+      }
+      const testPath2 = '/data/user/0/com.royalshubham.royalspend.royal_spend/cache/scaled_1000328449.jpg';
+      if (await File(testPath2).exists()) {
+        final res2 = await ocr.processImage(testPath2);
+        debugPrint('PROBE 1000328449 RAW: """${res2.fullText}"""');
+        for (final l in res2.lines) {
+          debugPrint('PROBE 1000328449 LINE: "${l.text}"');
+        }
+        final p2 = ReceiptParser.parse(res2.fullText, imagePath: testPath2, ocrLines: res2.lines);
+        debugPrint('PROBE 1000328449 PARSED: amount=${p2.amount}, status=${p2.amountStatus}, merchant=${p2.merchant}, candidates=${p2.candidateAmounts}');
+      }
+    } catch (e, st) {
+      debugPrint('PROBE ERROR: $e\n$st');
+    }
+  });
 }
 
 class RoyalSpendApp extends StatelessWidget {
@@ -82,20 +107,17 @@ class RoyalSpendApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
-        final isFirstLaunch = settings.isFirstLaunch;
+    final settings = context.watch<SettingsProvider>();
 
-        return MaterialApp(
-          title: 'Royal Spend',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.darkTheme,
-          themeMode: ThemeMode.dark,
-          home: isFirstLaunch
-              ? const IntroScreen()
-              : const MainNavigationScreen(),
-        );
-      },
+    return MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: settings.themeMode,
+      home: settings.hasCompletedIntro
+          ? const MainNavigationScreen()
+          : const IntroScreen(),
     );
   }
 }
