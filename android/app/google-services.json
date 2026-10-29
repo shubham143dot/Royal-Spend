@@ -12,7 +12,20 @@
           "package_name": "com.royalshubham.royalspend.royal_spend"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "726663632525-a4mojj90c3lue8jbgt2met5upaqod2ht.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalshubham.royalspend.royal_spend",
+            "certificate_hash": "10d9d273406d7246af7e058f77aa3ff6d010c1a9"
+          }
+        },
+        {
+          "client_id": "726663632525-6i38tdrp0omov8rrsl5v2989vo0e94qu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD8h2mnUQN0vSgVDaBEGpevtrzxLhmnL78"
@@ -20,11 +33,22 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "726663632525-6i38tdrp0omov8rrsl5v2989vo0e94qu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "726663632525-9alf6dlphv9f1k2emdcjooiu35ulq5l3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.royalshubham.royalspend.royalSpend"
+              }
+            }
+          ]
         }
       }
     }
   ],
   "configuration_version": "1"
 }
-

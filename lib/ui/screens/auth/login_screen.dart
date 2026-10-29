@@ -245,8 +245,13 @@ class _LoginScreenState extends State<LoginScreen>
       _setStatus(
         'Email sign-in is not connected yet. Connect an authentication provider to sign in.',
       );
-    } catch (_) {
-      _setStatus('We couldn’t sign you in. Check your details and try again.');
+    } catch (e) {
+      final raw = e.toString().replaceAll('Exception: ', '').trim();
+      _setStatus(
+        raw.isNotEmpty
+            ? raw
+            : 'We couldn’t sign you in. Check your details and try again.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -273,8 +278,13 @@ class _LoginScreenState extends State<LoginScreen>
       _setStatus(
         'Account creation is not connected yet. Connect an authentication provider to continue.',
       );
-    } catch (_) {
-      _setStatus('We couldn’t create your account. Please try again.');
+    } catch (e) {
+      final raw = e.toString().replaceAll('Exception: ', '').trim();
+      _setStatus(
+        raw.isNotEmpty
+            ? raw
+            : 'We couldn’t create your account. Please try again.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -297,10 +307,16 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       setState(() => _isGoogleLoading = false);
       _showAuthNoticeDialog();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isGoogleLoading = false);
-      _setStatus('Google sign-in couldn’t be completed. Please try again.');
+      final raw = e.toString().replaceAll('Exception: ', '').trim();
+      if (raw.isNotEmpty &&
+          !raw.contains('sign_in_canceled') &&
+          !raw.contains('canceled') &&
+          !raw.contains('cancelled')) {
+        _setStatus(raw);
+      }
     } finally {
       if (mounted && _isGoogleLoading) setState(() => _isGoogleLoading = false);
     }
@@ -527,11 +543,15 @@ class _LoginScreenState extends State<LoginScreen>
           true,
         );
       });
-    } catch (_) {
+    } catch (e) {
       if (!dialogContext.mounted) return;
+      final raw = e.toString().replaceAll('Exception: ', '').trim();
       setDialogState(() {
         setLoading(false);
-        setMessage('We couldn’t send a reset link. Please try again.', true);
+        setMessage(
+          raw.isNotEmpty ? raw : 'We couldn’t send a reset link. Please try again.',
+          true,
+        );
       });
     }
   }
@@ -1014,36 +1034,87 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildCardEyebrow(String label) => Row(
-    children: [
-      Container(
-        width: 24,
-        height: 1.5,
-        decoration: BoxDecoration(
-          color: _gold,
-          boxShadow: [
-            BoxShadow(
-              color: _gold.withValues(alpha: 0.6),
-              blurRadius: 4,
+  Widget _buildCardEyebrow(String label) {
+    final isCreate = label.contains('CREATE');
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 24,
+              height: 2,
+              decoration: BoxDecoration(
+                color: _gold,
+                borderRadius: BorderRadius.circular(1),
+                boxShadow: [
+                  BoxShadow(
+                    color: _gold.withValues(alpha: 0.6),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                color: _champagne,
+                fontSize: 11.5,
+                letterSpacing: 1.8,
+                fontWeight: FontWeight.w700,
+                shadows: [
+                  Shadow(color: Colors.black, blurRadius: 6),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-      const SizedBox(width: 10),
-      Text(
-        label,
-        style: const TextStyle(
-          color: _champagne,
-          fontSize: 11.5,
-          letterSpacing: 1.8,
-          fontWeight: FontWeight.w700,
-          shadows: [
-            Shadow(color: Colors.black, blurRadius: 6),
-          ],
+        LiquidPop(
+          pressedScale: 0.94,
+          onTap: () => _switchMode(!isCreate),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _gold.withValues(alpha: 0.45),
+                width: 0.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isCreate ? Icons.login_rounded : Icons.person_add_outlined,
+                  size: 13,
+                  color: _champagne,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  isCreate ? 'Existing User' : 'New User',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.90),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
   Widget _buildDemoAction() => FadeTransition(
     opacity: _secondaryFade,
@@ -1093,8 +1164,8 @@ class _GlassAuthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return RoyalGlassPanel(
       borderRadius: 28,
-      blurSigma: 26,
-      surfaceOpacity: 0.13,
+      blurSigma: 34,
+      surfaceOpacity: 0.10,
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
       customAccentColor: const Color(0xFFD4AF37),
       child: child,
@@ -1508,31 +1579,71 @@ class _StatusMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: isError ? const Color(0x33F06464) : const Color(0x333DAB73),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isError ? const Color(0x80F06464) : const Color(0x803DAB73),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: (isError ? const Color(0xFFF06464) : const Color(0xFF3DAB73))
-                .withValues(alpha: 0.15),
-            blurRadius: 10,
+    child: TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 320),
+      curve: IOSSpringCurve.gentle,
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * -6),
+            child: child,
           ),
-        ],
-      ),
-      child: Text(
-        message,
-        style: TextStyle(
-          color: isError ? const Color(0xFFFFBABA) : const Color(0xFFC3F3D6),
-          fontSize: 13,
-          height: 1.4,
-          fontWeight: FontWeight.w500,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isError
+              ? const Color(0xFFE53935).withValues(alpha: 0.16)
+              : const Color(0xFF2E7D32).withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isError
+                ? const Color(0xFFEF5350).withValues(alpha: 0.60)
+                : const Color(0xFF66BB6A).withValues(alpha: 0.60),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (isError
+                      ? const Color(0xFFEF5350)
+                      : const Color(0xFF66BB6A))
+                  .withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
+              size: 19,
+              color: isError
+                  ? const Color(0xFFFF8E8E)
+                  : const Color(0xFFA4E3BE),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: isError
+                      ? const Color(0xFFFFCDCD)
+                      : const Color(0xFFD4F7E2),
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     ),
