@@ -18,6 +18,7 @@ import '../widgets/liquid_pop.dart';
 import '../widgets/set_budget_sheet.dart';
 import '../widgets/transaction_detail_modal.dart';
 import '../widgets/transaction_tile.dart';
+import 'add_edit_expense_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -65,15 +66,47 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Expense History',
-                    style: AppTextStyles.titleLarge.copyWith(
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      'Expense History',
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      LiquidPop(
+                        pressedScale: 0.90,
+                        onTap: () {
+                          HapticHelper.mediumImpact();
+                          AddEditExpenseSheet.show(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: AppColors.royalGradient,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.royalIndigo.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.add,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       LiquidPop(
                         pressedScale: 0.90,
                         onTap: () {
@@ -81,7 +114,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           SetBudgetSheet.show(context);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
@@ -307,10 +340,44 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Try adjusting your search keywords or filter options.',
+                          'Try adjusting your search keywords or record a new expense.',
                           textAlign: TextAlign.center,
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        LiquidPop(
+                          pressedScale: 0.94,
+                          onTap: () => AddEditExpenseSheet.show(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: AppColors.royalGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.royalIndigo.withValues(alpha: 0.35),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(CupertinoIcons.add, size: 15, color: Colors.white),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Record Expense',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

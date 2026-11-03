@@ -21,6 +21,7 @@ import '../widgets/liquid_pop.dart';
 import '../widgets/quick_log/add_edit_quick_log_sheet.dart';
 import '../widgets/set_budget_sheet.dart';
 import '../widgets/stat_badge.dart';
+import '../widgets/sync_status_badge.dart';
 import '../widgets/transaction_detail_modal.dart';
 import '../widgets/transaction_tile.dart';
 import 'add_edit_expense_sheet.dart';
@@ -103,15 +104,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              DateFormatter.getGreeting(),
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              child: Text(
+                                DateFormatter.getGreeting(),
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 4),
                             const Text('✨', style: TextStyle(fontSize: 14)),
+                            const SizedBox(width: 8),
+                            SyncStatusBadge(isDark: isDark, compact: true),
                           ],
                         ),
                         const SizedBox(height: 2),

@@ -418,9 +418,19 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
             children: [
               Expanded(
                 child: LiquidPop(
-                  onTap: () {
-                    final currentDay = travelProvider.selectedDay;
-                    if (currentDay == null) return;
+                  onTap: () async {
+                    var currentDay = travelProvider.selectedDay;
+                    if (currentDay == null && travelProvider.currentDays.isNotEmpty) {
+                      currentDay = travelProvider.currentDays.first;
+                    }
+                    if (currentDay == null) {
+                      await travelProvider.generateDaysForTrip(trip);
+                      currentDay = travelProvider.selectedDay ??
+                          (travelProvider.currentDays.isNotEmpty
+                              ? travelProvider.currentDays.first
+                              : null);
+                    }
+                    if (currentDay == null || !context.mounted) return;
                     AddEditActivitySheet.show(
                       context,
                       tripId: trip.id,
@@ -556,12 +566,136 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
 
     if (days.isEmpty || selectedDay == null) {
       return Center(
-        child: Text(
-          'No itinerary days generated.',
-          style: TextStyle(
-            color: isDark
-                ? AppColors.darkTextSecondary
-                : AppColors.lightTextSecondary,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                      .withValues(alpha: 0.14),
+                ),
+                child: Icon(
+                  CupertinoIcons.calendar_badge_plus,
+                  size: 28,
+                  color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Generate Daily Itinerary',
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.lightTextPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Create daily schedule slots for all ${trip.calendarDaysCount} days from ${trip.formattedDateRange}.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+              ),
+              const SizedBox(height: 18),
+              LiquidPop(
+                onTap: () => travelProvider.generateDaysForTrip(trip),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.royalGradient,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.royalIndigo.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.sparkles,
+                          size: 16, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Generate Itinerary Days',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              LiquidPop(
+                onTap: () {
+                  HapticHelper.selectionClick();
+                  AddEditDaySheet.show(
+                    context,
+                    tripId: trip.id,
+                    defaultDayNumber: 1,
+                    defaultDate: trip.startDate,
+                    isDark: isDark,
+                    onSave: (newDay) => travelProvider.addDay(newDay),
+                  );
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: (isDark
+                              ? AppColors.appleBlue
+                              : AppColors.royalIndigo)
+                          .withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        CupertinoIcons.add_circled,
+                        size: 15,
+                        color: isDark
+                            ? AppColors.appleBlue
+                            : AppColors.royalIndigo,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Add Single Day Manually',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppColors.appleBlue
+                              : AppColors.royalIndigo,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -786,6 +920,7 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
                       defaultDate: selectedDay.date,
                       isDark: isDark,
                       onSave: (updatedDay) => travelProvider.updateDay(updatedDay),
+                      onDelete: () => travelProvider.deleteDay(selectedDay.id),
                     );
                   },
                   child: Row(

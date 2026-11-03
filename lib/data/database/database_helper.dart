@@ -19,7 +19,7 @@ import '../models/trip.dart';
 
 class DatabaseHelper {
   static const String _databaseName = 'royal_spend.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   DatabaseHelper._internal();
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -52,7 +52,52 @@ class DatabaseHelper {
       version: _databaseVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: (db) async {
+        await _ensureSchemaIntegrity(db);
+      },
     );
+  }
+
+  Future<void> _ensureSchemaIntegrity(DatabaseExecutor db) async {
+    try {
+      // Verify expenses table and add trip_id column if not exists
+      final expenseColumns = await db.rawQuery('PRAGMA table_info(expenses)');
+      final hasTripId = expenseColumns.any((col) => col['name'] == 'trip_id');
+      if (!hasTripId) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN trip_id TEXT;');
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses (trip_id);');
+      }
+
+      // Ensure all travel tables exist
+      await _createTravelTables(db);
+
+      // Verify itinerary_activities table columns
+      final actColumns =
+          await db.rawQuery('PRAGMA table_info(itinerary_activities)');
+      final hasIsOvernight =
+          actColumns.any((col) => col['name'] == 'is_overnight');
+      if (!hasIsOvernight && actColumns.isNotEmpty) {
+        await db.execute(
+            'ALTER TABLE itinerary_activities ADD COLUMN is_overnight INTEGER NOT NULL DEFAULT 0;');
+      }
+
+      // Verify categories
+      final catRows =
+          await db.rawQuery('SELECT COUNT(*) as count FROM categories');
+      final catCount =
+          catRows.isNotEmpty ? (catRows.first['count'] as int? ?? 0) : 0;
+      if (catCount == 0) {
+        final batch = db.batch();
+        for (final category in DefaultCategories.categories) {
+          batch.insert('categories', category.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await batch.commit(noResult: true);
+      }
+    } catch (e) {
+      debugPrint('Schema integrity check note: $e');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -193,6 +238,7 @@ class DatabaseHelper {
         booking_reference TEXT,
         is_completed INTEGER NOT NULL DEFAULT 0,
         is_destination_confirmed INTEGER NOT NULL DEFAULT 1,
+        is_overnight INTEGER NOT NULL DEFAULT 0,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -327,6 +373,9 @@ class DatabaseHelper {
 
       // 2. Create travel tables
       await _createTravelTables(db);
+    }
+    if (oldVersion < 3) {
+      await _ensureSchemaIntegrity(db);
     }
   }
 
@@ -559,6 +608,24 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [activityId],
     );
+  }
+
+  Future<void> updateActivitiesSortOrder(List<ItineraryActivity> activities) async {
+    final db = await database;
+    final batch = db.batch();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (int i = 0; i < activities.length; i++) {
+      batch.update(
+        'itinerary_activities',
+        {
+          'sort_order': i,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [activities[i].id],
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   Future<List<ItineraryActivity>> getActivitiesForDay(String dayId) async {

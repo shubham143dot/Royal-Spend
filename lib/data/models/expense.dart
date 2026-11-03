@@ -119,21 +119,42 @@ class Expense {
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is num) return DateTime.fromMillisecondsSinceEpoch(val.toInt());
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      try {
+        final dynamic d = val;
+        return d.toDate() as DateTime;
+      } catch (_) {}
+      return DateTime.now();
+    }
+
+    bool parseBool(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      if (val is String) return val.toLowerCase() == 'true' || val == '1';
+      return false;
+    }
+
     return Expense(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      amount: (map['amount'] as num).toDouble(),
-      categoryId: map['category_id'] as String,
-      date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
+      id: map['id']?.toString() ?? '',
+      title: map['title']?.toString() ?? 'Expense',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      categoryId: map['category_id']?.toString() ?? DefaultCategories.categories.first.id,
+      date: parseDate(map['date']),
       paymentMethod: PaymentMethod.values.firstWhere(
         (p) => p.name == map['payment_method'],
         orElse: () => PaymentMethod.other,
       ),
       notes: map['notes'] as String?,
-      isIncome: (map['is_income'] as int) == 1,
+      isIncome: parseBool(map['is_income']),
       tripId: map['trip_id'] as String?,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 }

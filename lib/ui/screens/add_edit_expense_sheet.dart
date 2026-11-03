@@ -14,6 +14,7 @@ import 'package:royal_spend/core/utils/haptic_helper.dart';
 import 'package:royal_spend/data/models/expense.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
+import 'package:royal_spend/providers/travel_provider.dart';
 import 'package:royal_spend/ui/widgets/glass_button.dart';
 import 'package:royal_spend/ui/widgets/glass_text_field.dart';
 import 'package:royal_spend/ui/widgets/liquid_pop.dart';
@@ -297,7 +298,7 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
-        tripId: isEditing ? widget.expenseToEdit!.tripId : _selectedTripId,
+        tripId: _selectedTripId,
         isIncome: isEditing
             ? widget.expenseToEdit!.isIncome
             : (_entryMode == ExpenseEntryMode.smartImport &&
@@ -310,6 +311,16 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
         await provider.updateExpense(expense);
       } else {
         await provider.addExpense(expense);
+      }
+
+      // Synchronize travel plan budget & expenses if associated with a trip
+      if (mounted) {
+        try {
+          final travelProv = context.read<TravelProvider>();
+          if (expense.tripId != null || (widget.expenseToEdit?.tripId != null)) {
+            await travelProv.refreshLinkedExpenses();
+          }
+        } catch (_) {}
       }
 
       // Privacy: Clean up temporary receipt image if one was used
@@ -334,6 +345,21 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('Error saving expense: $e\n$stack');
+      HapticHelper.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.roseExpense,
+            content: Text('Failed to save expense: $e'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -874,6 +900,139 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
                     ],
                   ),
                   const SizedBox(height: 18),
+
+                  // Travel Plan Association (Optional)
+                  Builder(
+                    builder: (ctx) {
+                      TravelProvider? travelProvider;
+                      try {
+                        travelProvider = Provider.of<TravelProvider>(ctx);
+                      } catch (_) {
+                        return const SizedBox.shrink();
+                      }
+                      final trips = travelProvider.trips;
+                      if (trips.isEmpty) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.airplane,
+                                  size: 13,
+                                  color: isDark ? AppColors.appleOrange : const Color(0xFFF97316),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'LINK TO TRAVEL PLAN (OPTIONAL)',
+                                  style: AppTextStyles.labelUppercase.copyWith(
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            height: 52,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: isDark
+                                  ? AppColors.darkSurface
+                                  : Colors.white.withValues(alpha: 0.70),
+                              border: Border.all(
+                                color: _selectedTripId != null
+                                    ? (isDark ? AppColors.appleOrange : const Color(0xFFF97316))
+                                    : (isDark
+                                        ? AppColors.darkGlassHighlight
+                                        : Colors.white.withValues(alpha: 0.85)),
+                                width: _selectedTripId != null ? 1.2 : 0.6,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String?>(
+                                value: _selectedTripId,
+                                isExpanded: true,
+                                icon: Icon(
+                                  CupertinoIcons.chevron_down,
+                                  size: 14,
+                                  color: isDark
+                                      ? AppColors.darkTextMuted
+                                      : AppColors.lightTextMuted,
+                                ),
+                                dropdownColor:
+                                    isDark ? AppColors.darkCard : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                items: [
+                                  DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.person_fill,
+                                          size: 15,
+                                          color: isDark
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.lightTextSecondary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Personal Expense (Not linked to trip)',
+                                          style: AppTextStyles.bodyMedium.copyWith(
+                                            color: isDark
+                                                ? AppColors.darkTextPrimary
+                                                : AppColors.lightTextPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ...trips.map((trip) {
+                                    return DropdownMenuItem<String?>(
+                                      value: trip.id,
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            CupertinoIcons.airplane,
+                                            size: 15,
+                                            color: Color(0xFFF97316),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '${trip.title} (${trip.destination})',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTextStyles.bodyMedium.copyWith(
+                                                color: isDark
+                                                    ? AppColors.darkTextPrimary
+                                                    : AppColors.lightTextPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                                onChanged: (tripId) {
+                                  HapticHelper.selectionClick();
+                                  setState(() => _selectedTripId = tripId);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                        ],
+                      );
+                    },
+                  ),
 
                   // Optional Notes
                   GlassTextField(

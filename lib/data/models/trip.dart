@@ -254,6 +254,19 @@ class Trip {
   }
 
   factory Trip.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is num) return DateTime.fromMillisecondsSinceEpoch(val.toInt());
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      try {
+        final dynamic d = val;
+        return d.toDate() as DateTime;
+      } catch (_) {}
+      return DateTime.now();
+    }
+
     List<String> parseStringList(dynamic raw) {
       if (raw == null) return [];
       if (raw is List) return raw.map((e) => e.toString()).toList();
@@ -265,18 +278,16 @@ class Trip {
     }
 
     return Trip(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      destination: map['destination'] as String,
+      id: map['id']?.toString() ?? '',
+      title: map['title']?.toString() ?? 'Trip',
+      destination: map['destination']?.toString() ?? 'Destination',
       additionalDestinations:
           parseStringList(map['additional_destinations']),
       departureCity: map['departure_city'] as String?,
-      startDate:
-          DateTime.fromMillisecondsSinceEpoch(map['start_date'] as int),
-      endDate:
-          DateTime.fromMillisecondsSinceEpoch(map['end_date'] as int),
+      startDate: parseDate(map['start_date']),
+      endDate: parseDate(map['end_date']),
       currency: (map['currency'] as String?) ?? 'INR',
-      travelersCount: (map['travelers_count'] as int?) ?? 1,
+      travelersCount: (map['travelers_count'] as num?)?.toInt() ?? 1,
       travelersNames: parseStringList(map['travelers_names']).isNotEmpty
           ? parseStringList(map['travelers_names'])
           : const ['You'],
@@ -298,10 +309,8 @@ class Trip {
         (s) => s.name == map['status'],
         orElse: () => TripStatus.upcoming,
       ),
-      createdAt:
-          DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
-      updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 }

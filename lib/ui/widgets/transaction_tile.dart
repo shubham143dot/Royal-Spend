@@ -143,6 +143,36 @@ class TransactionTile extends StatelessWidget {
                           color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                         ),
                       ),
+                      if (expense.tripId != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: (isDark ? AppColors.appleOrange : const Color(0xFFF97316))
+                                .withValues(alpha: isDark ? 0.25 : 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.airplane,
+                                size: 9,
+                                color: Color(0xFFF97316),
+                              ),
+                              SizedBox(width: 2),
+                              Text(
+                                'Trip',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFF97316),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

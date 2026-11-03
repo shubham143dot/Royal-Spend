@@ -250,36 +250,36 @@ class _LoginVideoBackgroundState extends State<LoginVideoBackground>
               ),
             ),
 
-          // 4. Cinematic luxury scrim overlay - calibrated for glassmorphism transparency
-          // Keeps video motion and lighting clearly visible while ensuring 100% text legibility
+          // 4. Ultra-sheer optical liquid scrim overlay - calibrated for maximum video transparency
+          // Ensures video motion and vivid lighting shine directly through the liquid glass
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.25, 0.55, 0.85, 1.0],
+                  stops: const [0.0, 0.20, 0.60, 0.85, 1.0],
                   colors: [
-                    Colors.black.withValues(alpha: 0.68 * widget.scrimOpacity),
-                    Colors.black.withValues(alpha: 0.32 * widget.scrimOpacity),
-                    Colors.black.withValues(alpha: 0.42 * widget.scrimOpacity),
-                    const Color(0xFF06080E).withValues(alpha: 0.65 * widget.scrimOpacity),
-                    const Color(0xFF030407).withValues(alpha: 0.78 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.38 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.12 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.16 * widget.scrimOpacity),
+                    const Color(0xFF07152B).withValues(alpha: 0.35 * widget.scrimOpacity),
+                    const Color(0xFF050B1A).withValues(alpha: 0.48 * widget.scrimOpacity),
                   ],
                 ),
               ),
             ),
           ),
 
-          // 5. Ambient gold specular tint for high-end royal aesthetics
+          // 5. Subtle electric cyan/blue optical refraction tint
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0.0, -0.4),
+                  center: const Alignment(0.0, -0.3),
                   radius: 1.1,
                   colors: [
-                    const Color(0xFFD4AF37).withValues(alpha: 0.08 * widget.scrimOpacity),
+                    const Color(0xFF36D9FF).withValues(alpha: 0.05 * widget.scrimOpacity),
                     Colors.transparent,
                   ],
                 ),

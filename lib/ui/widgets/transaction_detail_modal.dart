@@ -10,6 +10,7 @@ import '../../core/utils/haptic_helper.dart';
 import '../../data/models/expense.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/travel_provider.dart';
 import '../screens/add_edit_expense_sheet.dart';
 import 'glass_button.dart';
 
@@ -189,6 +190,22 @@ class TransactionDetailModal extends StatelessWidget {
                     icon: expense.paymentMethod.icon,
                     isDark: isDark,
                   ),
+                  if (expense.tripId != null) ...[
+                    _buildRowDivider(isDark),
+                    Builder(
+                      builder: (ctx) {
+                        final travelProv = ctx.watch<TravelProvider>();
+                        final trip = travelProv.trips.where((t) => t.id == expense.tripId).firstOrNull;
+                        final tripName = trip != null ? '${trip.title} (${trip.destination})' : 'Travel Plan';
+                        return _buildDetailRow(
+                          label: 'Associated Trip',
+                          value: tripName,
+                          icon: CupertinoIcons.airplane,
+                          isDark: isDark,
+                        );
+                      },
+                    ),
+                  ],
                   if (expense.notes != null && expense.notes!.isNotEmpty) ...[
                     _buildRowDivider(isDark),
                     _buildDetailRow(
@@ -247,17 +264,24 @@ class TransactionDetailModal extends StatelessWidget {
 
                       if (confirmed == true && context.mounted) {
                         Navigator.pop(context);
-                        context.read<ExpenseProvider>().deleteExpense(expense.id);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Transaction deleted'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: isDark ? AppColors.darkSurface : const Color(0xFF1E293B),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                        final expenseProv = context.read<ExpenseProvider>();
+                        final travelProv = context.read<TravelProvider>();
+                        await expenseProv.deleteExpense(expense.id);
+                        if (expense.tripId != null) {
+                          await travelProv.refreshLinkedExpenses();
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Transaction deleted'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: isDark ? AppColors.darkSurface : const Color(0xFF1E293B),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       }
                     },
                   ),

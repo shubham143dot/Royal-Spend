@@ -95,6 +95,8 @@ class TravelProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refresh() => loadTrips();
+
   // --- Filtered Trips for Dashboard ---
 
   List<Trip> get filteredTrips {
@@ -157,7 +159,22 @@ class TravelProvider extends ChangeNotifier {
     _selectedTrip = trip;
 
     // Load all child records isolated strictly to this tripId
-    final days = await _repository.getDaysForTrip(tripId);
+    var days = await _repository.getDaysForTrip(tripId);
+    if (days.isEmpty && trip.calendarDaysCount > 0) {
+      for (int i = 0; i < trip.calendarDaysCount; i++) {
+        final dayNum = i + 1;
+        final dayDate = trip.startDate.add(Duration(days: i));
+        final day = ItineraryDay(
+          id: '${trip.id}_day_$dayNum',
+          tripId: trip.id,
+          dayNumber: dayNum,
+          date: dayDate,
+          title: 'Day $dayNum',
+        );
+        await _repository.addDay(day);
+        days.add(day);
+      }
+    }
     _currentDays = days;
     if (_currentDays.isNotEmpty) {
       _selectedDay = _currentDays.first;
@@ -166,8 +183,9 @@ class TravelProvider extends ChangeNotifier {
     final allActivities = await _repository.getActivitiesForTrip(tripId);
     final Map<String, List<ItineraryActivity>> actMap = {};
     for (final day in days) {
-      actMap[day.id] =
-          allActivities.where((a) => a.dayId == day.id).toList();
+      final dayActs = allActivities.where((a) => a.dayId == day.id).toList();
+      dayActs.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      actMap[day.id] = dayActs;
     }
     _activitiesByDay = actMap;
 
@@ -424,11 +442,15 @@ class TravelProvider extends ChangeNotifier {
   }
 
   Future<void> addActivity(ItineraryActivity activity) async {
-    await _repository.addActivity(activity);
-    if (_selectedTrip != null && activity.tripId == _selectedTrip!.id) {
-      final list = _activitiesByDay[activity.dayId] ?? [];
-      list.add(activity);
-      _activitiesByDay[activity.dayId] = list;
+    final list = _activitiesByDay[activity.dayId] ?? [];
+    final finalActivity = activity.sortOrder == 0 && list.isNotEmpty
+        ? activity.copyWith(sortOrder: list.length)
+        : activity;
+    await _repository.addActivity(finalActivity);
+    if (_selectedTrip != null && finalActivity.tripId == _selectedTrip!.id) {
+      list.add(finalActivity);
+      list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      _activitiesByDay[finalActivity.dayId] = list;
       notifyListeners();
     }
   }
@@ -440,9 +462,65 @@ class TravelProvider extends ChangeNotifier {
       final idx = list.indexWhere((a) => a.id == activity.id);
       if (idx != -1) {
         list[idx] = activity;
+        list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
         _activitiesByDay[activity.dayId] = list;
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> reorderActivities(String dayId, int oldIndex, int newIndex) async {
+    final list = _activitiesByDay[dayId];
+    if (list == null || list.isEmpty) return;
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    if (oldIndex < 0 || oldIndex >= list.length || newIndex < 0 || newIndex >= list.length) {
+      return;
+    }
+
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+
+    final updatedList = <ItineraryActivity>[];
+    for (int i = 0; i < list.length; i++) {
+      final updated = list[i].copyWith(sortOrder: i);
+      updatedList.add(updated);
+    }
+    _activitiesByDay[dayId] = updatedList;
+    notifyListeners();
+
+    await _repository.reorderActivities(dayId, updatedList);
+  }
+
+  double getDailyEstimatedCost(String dayId) {
+    final acts = _activitiesByDay[dayId] ?? [];
+    return acts.fold(0.0, (sum, a) => sum + a.estimatedCost);
+  }
+
+  Future<void> generateDaysForTrip(Trip trip) async {
+    final days = <ItineraryDay>[];
+    for (int i = 0; i < trip.calendarDaysCount; i++) {
+      final dayNum = i + 1;
+      final dayDate = trip.startDate.add(Duration(days: i));
+      final day = ItineraryDay(
+        id: '${trip.id}_day_$dayNum',
+        tripId: trip.id,
+        dayNumber: dayNum,
+        date: dayDate,
+        title: 'Day $dayNum',
+      );
+      days.add(day);
+      await _repository.addDay(day);
+    }
+    if (_selectedTrip?.id == trip.id) {
+      _currentDays = days;
+      _selectedDay = days.isNotEmpty ? days.first : null;
+      for (final d in days) {
+        _activitiesByDay.putIfAbsent(d.id, () => []);
+      }
+      notifyListeners();
     }
   }
 

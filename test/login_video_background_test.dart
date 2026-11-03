@@ -281,7 +281,7 @@ void main() {
       // Verify branding and headings
       expect(find.byType(RoyalLogo), findsOneWidget);
       expect(find.text('Welcome Back'), findsOneWidget);
-      expect(find.text('Your finances, beautifully organized.'), findsOneWidget);
+      expect(find.text('Your money. Your journey. Your control.'), findsOneWidget);
       expect(find.text('SIGN IN'), findsOneWidget);
 
       // Verify text input fields and hints

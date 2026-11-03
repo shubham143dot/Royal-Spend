@@ -29,6 +29,10 @@ class SettingsProvider extends ChangeNotifier {
 
   bool _hasCompletedIntro = false;
   bool get hasCompletedIntro => _hasCompletedIntro;
+  bool get hasSeenIntro => _hasCompletedIntro;
+
+  String? _profilePhotoUrl;
+  String? get profilePhotoUrl => _profilePhotoUrl;
 
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
@@ -40,7 +44,8 @@ class SettingsProvider extends ChangeNotifier {
     _userName = await _repository.getUserName();
     _monthlyBudget = await _repository.getMonthlyBudget();
     _hapticsEnabled = await _repository.isHapticsEnabled();
-    _hasCompletedIntro = await _repository.hasCompletedIntro();
+    _hasCompletedIntro = await _repository.hasSeenIntro();
+    _profilePhotoUrl = await _repository.getUserProfilePhoto();
     _isAuthenticated = await _repository.isAuthenticated();
     HapticHelper.enabled = _hapticsEnabled;
     notifyListeners();
@@ -49,6 +54,16 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setHasCompletedIntro(bool completed) async {
     _hasCompletedIntro = completed;
     await _repository.setHasCompletedIntro(completed);
+    notifyListeners();
+  }
+
+  Future<void> setHasSeenIntro(bool seen) async {
+    await setHasCompletedIntro(seen);
+  }
+
+  Future<void> setProfilePhotoUrl(String? photoUrl) async {
+    _profilePhotoUrl = photoUrl;
+    await _repository.setUserProfilePhoto(photoUrl);
     notifyListeners();
   }
 

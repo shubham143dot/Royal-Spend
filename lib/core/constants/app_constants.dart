@@ -26,6 +26,8 @@ class AppConstants {
   static const String keyHasSeededDemoData = 'has_seeded_demo_data';
   static const String keyHapticsEnabled = 'haptics_enabled';
   static const String keyHasCompletedIntro = 'has_completed_intro';
+  static const String keyHasSeenIntro = 'has_seen_intro';
+  static const String keyUserProfilePhoto = 'user_profile_photo';
   static const String keyIsAuthenticated = 'is_authenticated';
 
   // Default values

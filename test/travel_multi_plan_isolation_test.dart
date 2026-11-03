@@ -109,6 +109,16 @@ class MockTravelRepository implements ITravelRepository {
   }
 
   @override
+  Future<void> reorderActivities(String dayId, List<ItineraryActivity> reorderedActivities) async {
+    for (final act in reorderedActivities) {
+      final idx = activities.indexWhere((a) => a.id == act.id);
+      if (idx != -1) {
+        activities[idx] = act;
+      }
+    }
+  }
+
+  @override
   Future<List<SavedPlace>> getSavedPlacesForTrip(String tripId) async {
     return savedPlaces.where((s) => s.tripId == tripId).toList();
   }

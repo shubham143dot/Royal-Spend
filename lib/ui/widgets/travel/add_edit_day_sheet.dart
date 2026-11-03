@@ -20,6 +20,7 @@ class AddEditDaySheet extends StatefulWidget {
   final DateTime defaultDate;
   final bool isDark;
   final ValueChanged<ItineraryDay> onSave;
+  final VoidCallback? onDelete;
 
   const AddEditDaySheet({
     super.key,
@@ -29,6 +30,7 @@ class AddEditDaySheet extends StatefulWidget {
     required this.defaultDate,
     required this.isDark,
     required this.onSave,
+    this.onDelete,
   });
 
   static Future<void> show(
@@ -39,6 +41,7 @@ class AddEditDaySheet extends StatefulWidget {
     required DateTime defaultDate,
     required bool isDark,
     required ValueChanged<ItineraryDay> onSave,
+    VoidCallback? onDelete,
   }) {
     HapticHelper.mediumImpact();
     return showModalBottomSheet(
@@ -58,6 +61,7 @@ class AddEditDaySheet extends StatefulWidget {
         defaultDate: defaultDate,
         isDark: isDark,
         onSave: onSave,
+        onDelete: onDelete,
       ),
     );
   }
@@ -133,7 +137,7 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
     );
 
     widget.onSave(day);
-    Navigator.maybePop(context);
+    Navigator.pop(context);
   }
 
   @override
@@ -285,6 +289,68 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
                 isDark: isDark,
                 onPressed: _handleSave,
               ),
+
+              if (widget.dayToEdit != null && widget.onDelete != null) ...[
+                const SizedBox(height: 12),
+                LiquidPop(
+                  onTap: () {
+                    HapticHelper.heavyImpact();
+                    showCupertinoDialog(
+                      context: context,
+                      builder: (dialogCtx) => CupertinoAlertDialog(
+                        title: Text('Delete Day ${widget.dayToEdit!.dayNumber}?'),
+                        content: const Text(
+                          'Are you sure you want to delete this day? All scheduled stops for this day will also be removed.',
+                        ),
+                        actions: [
+                          CupertinoDialogAction(
+                            isDefaultAction: true,
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: const Text('Cancel'),
+                          ),
+                          CupertinoDialogAction(
+                            isDestructiveAction: true,
+                            onPressed: () {
+                              Navigator.pop(dialogCtx);
+                              Navigator.pop(context);
+                              widget.onDelete!();
+                            },
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: AppColors.roseExpense.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.roseExpense.withValues(alpha: 0.35),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(CupertinoIcons.trash,
+                            size: 15, color: AppColors.roseExpense),
+                        SizedBox(width: 8),
+                        Text(
+                          'Delete This Day',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.roseExpense,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

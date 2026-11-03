@@ -425,6 +425,21 @@ class _QuickTravelExpenseSheetState extends State<QuickTravelExpenseSheet> {
           ),
         );
       }
+    } catch (e, stack) {
+      debugPrint('Error saving travel expense: $e\n$stack');
+      HapticHelper.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.roseExpense,
+            content: Text('Failed to save travel expense: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

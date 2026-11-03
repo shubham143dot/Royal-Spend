@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -116,6 +117,21 @@ class FakeRoyalAuthGateway implements RoyalAuthGateway {
 
   @override
   Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> updateProfile({String? displayName, String? photoURL}) async {}
+
+  @override
+  Stream<User?>? get authStateChanges => null;
+
+  @override
+  User? get currentUser => null;
 }
 
 class FakeSettingsRepository extends SettingsRepository {
@@ -236,7 +252,7 @@ void main() {
       // Verify luxury branding typography
       expect(find.text('Welcome Back'), findsOneWidget);
       expect(
-        find.text('Your finances, beautifully organized.'),
+        find.text('Your money. Your journey. Your control.'),
         findsOneWidget,
       );
       expect(find.byType(TextFormField), findsNWidgets(2));
@@ -273,6 +289,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
 
       // Tap Continue with Google
+      await tester.ensureVisible(find.text('Continue with Google'));
       await tester.tap(find.text('Continue with Google'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));

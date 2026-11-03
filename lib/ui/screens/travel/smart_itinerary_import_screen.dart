@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/services/travel/darjeeling_sample_data.dart';
 import '../../../core/services/travel/itinerary_text_parser.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -82,10 +81,12 @@ class _SmartItineraryImportScreenState
     }
   }
 
-  void _loadDarjeelingSample() {
+  void _clearText() {
     HapticHelper.mediumImpact();
-    _textController.text = DarjeelingSampleData.rawText.trim();
-    _analyzeText();
+    _textController.clear();
+    setState(() {
+      _parsedResult = null;
+    });
   }
 
   Future<void> _confirmAndCreatePlan() async {
@@ -362,20 +363,19 @@ class _SmartItineraryImportScreenState
                           const SizedBox(width: 10),
                           Expanded(
                             child: LiquidPop(
-                              onTap: _loadDarjeelingSample,
+                              onTap: _clearText,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 9, horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: (isDark
-                                          ? AppColors.applePurple
-                                          : AppColors.violetAccent)
-                                      .withValues(alpha: 0.15),
+                                  color: isDark
+                                      ? AppColors.darkSurface
+                                      : Colors.white.withValues(alpha: 0.8),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: (isDark
-                                            ? AppColors.applePurple
-                                            : AppColors.violetAccent)
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.lightTextMuted)
                                         .withValues(alpha: 0.35),
                                     width: 0.8,
                                   ),
@@ -385,23 +385,23 @@ class _SmartItineraryImportScreenState
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      CupertinoIcons.sparkles,
+                                      CupertinoIcons.trash,
                                       size: 14,
                                       color: isDark
-                                          ? AppColors.applePurple
-                                          : AppColors.violetAccent,
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.lightTextSecondary,
                                     ),
                                     const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
-                                        'Darjeeling Sample',
+                                        'Clear Text',
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                           color: isDark
-                                              ? AppColors.applePurple
-                                              : AppColors.violetAccent,
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.lightTextSecondary,
                                         ),
                                       ),
                                     ),

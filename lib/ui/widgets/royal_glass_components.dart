@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+export 'liquid_glass_components.dart';
+
 /// Ultra-premium iOS Liquid Glassmorphic Panel.
 ///
 /// Features:

@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/services/travel/darjeeling_sample_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/haptic_helper.dart';
@@ -328,58 +327,6 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                                   ),
                                 ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Quick Sample Button for instant test
-                          LiquidPop(
-                            pressedScale: 0.96,
-                            onTap: () async {
-                              HapticHelper.mediumImpact();
-                              final package =
-                                  DarjeelingSampleData.buildPackage();
-                              await travelProvider.createTrip(
-                                package.trip,
-                                days: package.days,
-                                activities: package.activities,
-                                savedPlaces: package.savedPlaces,
-                                transports: package.transports,
-                                accommodations: package.accommodations,
-                                checklists: package.checklist,
-                              );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Loaded Darjeeling Trip test plan!'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  CupertinoIcons.sparkles,
-                                  size: 13,
-                                  color: isDark
-                                      ? AppColors.appleBlue
-                                      : AppColors.royalIndigo,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Load Darjeeling Itinerary Test Plan',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? AppColors.appleBlue
-                                        : AppColors.royalIndigo,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         ],

@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +16,7 @@ import 'package:royal_spend/providers/expense_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
-import 'package:royal_spend/ui/screens/intro/intro_screen.dart';
-import 'package:royal_spend/ui/screens/main_navigation_screen.dart';
+import 'package:royal_spend/ui/screens/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,12 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    if (!kIsWeb) {
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+    }
   } catch (e) {
     debugPrint('Firebase initialization note: $e');
   }
@@ -115,9 +122,7 @@ class RoyalSpendApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
-      home: settings.hasCompletedIntro
-          ? const MainNavigationScreen()
-          : const IntroScreen(),
+      home: const AuthGate(),
     );
   }
 }

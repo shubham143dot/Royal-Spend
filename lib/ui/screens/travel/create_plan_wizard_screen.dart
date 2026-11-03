@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/services/travel/darjeeling_sample_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/haptic_helper.dart';
@@ -28,7 +27,7 @@ class CreatePlanWizardScreen extends StatefulWidget {
 }
 
 class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
-  int _currentStep = 0; // 0: Details, 1: Preferences, 2: Budget & Transport, 3: How to Plan
+  final _formKey = GlobalKey<FormState>();
 
   // Form Controllers
   late TextEditingController _titleController;
@@ -45,6 +44,8 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
   late DateTime _startDate;
   late DateTime _endDate;
   final Set<String> _selectedPreferences = {};
+  bool _showAdvancedOptions = false;
+  bool _isSubmitting = false;
 
   final List<String> _availablePreferences = [
     'Mountains',
@@ -64,37 +65,41 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
     super.initState();
     final t = widget.tripToEdit;
 
-    _titleController = TextEditingController(text: t?.title ?? 'Darjeeling Trip');
-    _destinationController = TextEditingController(
-        text: t?.destination ?? 'Darjeeling, West Bengal, India');
-    _departureController =
-        TextEditingController(text: t?.departureCity ?? 'Hijli');
-    _descriptionController =
-        TextEditingController(text: t?.description ?? '');
+    _titleController = TextEditingController(text: t?.title ?? '');
+    _destinationController = TextEditingController(text: t?.destination ?? '');
+    _departureController = TextEditingController(text: t?.departureCity ?? '');
+    _descriptionController = TextEditingController(text: t?.description ?? '');
     _travelersController = TextEditingController(
-        text: t != null ? t.travelersCount.toString() : '1');
+      text: t != null ? t.travelersCount.toString() : '1',
+    );
 
     _budgetController = TextEditingController(
-        text: t != null && t.budget > 0 ? t.budget.toStringAsFixed(0) : '25000');
+      text: t != null && t.budget > 0 ? t.budget.toStringAsFixed(0) : '',
+    );
     _transportBudgetController = TextEditingController(
-        text: t != null && t.transportBudget > 0
-            ? t.transportBudget.toStringAsFixed(0)
-            : '6000');
+      text: t != null && t.transportBudget > 0
+          ? t.transportBudget.toStringAsFixed(0)
+          : '',
+    );
     _stayBudgetController = TextEditingController(
-        text: t != null && t.accommodationBudget > 0
-            ? t.accommodationBudget.toStringAsFixed(0)
-            : '9000');
+      text: t != null && t.accommodationBudget > 0
+          ? t.accommodationBudget.toStringAsFixed(0)
+          : '',
+    );
     _foodBudgetController = TextEditingController(
-        text: t != null && t.foodBudget > 0
-            ? t.foodBudget.toStringAsFixed(0)
-            : '5000');
+      text: t != null && t.foodBudget > 0
+          ? t.foodBudget.toStringAsFixed(0)
+          : '',
+    );
 
-    // Default dates from prompt: 10 to 18 December 2026 or tripToEdit dates
-    _startDate = t?.startDate ?? DateTime(2026, 12, 10);
-    _endDate = t?.endDate ?? DateTime(2026, 12, 18);
+    // Default dates: today to +7 days, or trip dates if editing
+    final now = DateTime.now();
+    _startDate = t?.startDate ?? DateTime(now.year, now.month, now.day);
+    _endDate = t?.endDate ?? _startDate.add(const Duration(days: 6));
 
     if (t != null) {
       _selectedPreferences.addAll(t.preferences);
+      _showAdvancedOptions = t.budget > 0 || t.preferences.isNotEmpty;
     } else {
       _selectedPreferences.addAll(['Mountains', 'Nature', 'Scenic viewpoints']);
     }
@@ -142,81 +147,134 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
     }
   }
 
-  Future<void> _commitTripCreation({required String planMethod}) async {
-    HapticHelper.success();
-    final travelProvider = context.read<TravelProvider>();
-    const uuid = Uuid();
-    final tripId = widget.tripToEdit?.id ?? uuid.v4();
-
-    final travelersCount = int.tryParse(_travelersController.text.trim()) ?? 1;
-    final totalBudget = double.tryParse(_budgetController.text.trim()) ?? 0.0;
-    final transBudget =
-        double.tryParse(_transportBudgetController.text.trim()) ?? 0.0;
-    final stayBudget =
-        double.tryParse(_stayBudgetController.text.trim()) ?? 0.0;
-    final foodBudget =
-        double.tryParse(_foodBudgetController.text.trim()) ?? 0.0;
-
-    final trip = Trip(
-      id: tripId,
-      title: _titleController.text.trim().isNotEmpty
-          ? _titleController.text.trim()
-          : 'My Trip to ${_destinationController.text.trim()}',
-      destination: _destinationController.text.trim().isNotEmpty
-          ? _destinationController.text.trim()
-          : 'Darjeeling, India',
-      departureCity: _departureController.text.trim().isNotEmpty
-          ? _departureController.text.trim()
-          : null,
-      startDate: _startDate,
-      endDate: _endDate,
-      travelersCount: travelersCount,
-      budget: totalBudget,
-      transportBudget: transBudget,
-      accommodationBudget: stayBudget,
-      foodBudget: foodBudget,
-      description: _descriptionController.text.trim().isNotEmpty
-          ? _descriptionController.text.trim()
-          : null,
-      preferences: _selectedPreferences.toList(),
-      status: TripStatus.upcoming,
-    );
-
-    if (widget.tripToEdit != null) {
-      await travelProvider.updateTrip(trip);
-      if (mounted) Navigator.pop(context);
+  Future<void> _submitPlan() async {
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+      HapticHelper.heavyImpact();
       return;
     }
 
-    if (planMethod == 'template') {
-      // Build Darjeeling sample package
-      final package = DarjeelingSampleData.buildPackage(customTripId: tripId);
-      await travelProvider.createTrip(
-        trip,
-        days: package.days,
-        activities: package.activities,
-        savedPlaces: package.savedPlaces,
-        transports: package.transports,
-        accommodations: package.accommodations,
-        checklists: package.checklist,
+    if (_endDate.isBefore(_startDate)) {
+      HapticHelper.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('End date cannot be earlier than start date'),
+          backgroundColor: AppColors.roseExpense,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
       );
-    } else {
-      // Build empty manual days
-      await travelProvider.createTrip(trip);
+      return;
     }
 
-    if (!mounted) return;
+    final travelersCount = int.tryParse(_travelersController.text.trim()) ?? 1;
+    if (travelersCount < 1) {
+      HapticHelper.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter at least 1 traveller'),
+          backgroundColor: AppColors.roseExpense,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      );
+      return;
+    }
 
-    // Navigate to workspace for newly created trip
-    await travelProvider.selectTrip(trip.id);
-    if (!mounted) return;
+    setState(() => _isSubmitting = true);
+    HapticHelper.success();
 
-    Navigator.pushReplacement(
-      context,
-      CupertinoPageRoute(
-        builder: (_) => TripWorkspaceScreen(tripId: trip.id),
-      ),
-    );
+    try {
+      final travelProvider = context.read<TravelProvider>();
+      const uuid = Uuid();
+      final tripId = widget.tripToEdit?.id ?? uuid.v4();
+
+      final totalBudget = double.tryParse(_budgetController.text.trim()) ?? 0.0;
+      final transBudget =
+          double.tryParse(_transportBudgetController.text.trim()) ?? 0.0;
+      final stayBudget =
+          double.tryParse(_stayBudgetController.text.trim()) ?? 0.0;
+      final foodBudget =
+          double.tryParse(_foodBudgetController.text.trim()) ?? 0.0;
+
+      final trip = Trip(
+        id: tripId,
+        title: _titleController.text.trim(),
+        destination: _destinationController.text.trim(),
+        departureCity: _departureController.text.trim().isNotEmpty
+            ? _departureController.text.trim()
+            : null,
+        startDate: _startDate,
+        endDate: _endDate,
+        travelersCount: travelersCount,
+        budget: totalBudget,
+        transportBudget: transBudget,
+        accommodationBudget: stayBudget,
+        foodBudget: foodBudget,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        preferences: _selectedPreferences.toList(),
+        status: widget.tripToEdit?.status ?? TripStatus.upcoming,
+      );
+
+      if (widget.tripToEdit != null) {
+        await travelProvider.updateTrip(trip);
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Travel plan updated successfully!'),
+              backgroundColor: AppColors.royalIndigo,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Build trip with automatically generated itinerary calendar days
+      await travelProvider.createTrip(trip);
+
+      if (!mounted) return;
+
+      // Select newly created trip and navigate to workspace
+      await travelProvider.selectTrip(trip.id);
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        CupertinoPageRoute(
+          builder: (_) => TripWorkspaceScreen(tripId: trip.id),
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Plan "${trip.title}" created successfully!'),
+          backgroundColor: AppColors.royalIndigo,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating travel plan: $e'),
+            backgroundColor: AppColors.roseExpense,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -225,6 +283,7 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
     final isDark = settings.isDarkMode(context);
     final dateFormat = DateFormat('d MMM yyyy');
     final calendarDays = _endDate.difference(_startDate).inDays + 1;
+    final isEditing = widget.tripToEdit != null;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -233,20 +292,16 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // Top Navigation Bar
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                 child: Row(
                   children: [
                     LiquidPop(
                       onTap: () {
                         HapticHelper.selectionClick();
-                        if (_currentStep > 0) {
-                          setState(() => _currentStep--);
-                        } else {
-                          Navigator.pop(context);
-                        }
+                        Navigator.pop(context);
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -265,19 +320,20 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.tripToEdit == null
-                                ? 'Create New Plan'
-                                : 'Edit Trip Details',
+                            isEditing ? 'Edit Travel Plan' : 'Create New Plan',
                             style: AppTextStyles.titleMedium.copyWith(
                               color: isDark
                                   ? AppColors.darkTextPrimary
                                   : AppColors.lightTextPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 19,
+                              letterSpacing: -0.3,
                             ),
                           ),
                           Text(
-                            'Step ${_currentStep + 1} of 4: ${_getStepTitle(_currentStep)}',
+                            isEditing
+                                ? 'Update trip details and dates'
+                                : 'Where are you going?',
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark
@@ -292,81 +348,409 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
                 ),
               ),
 
-              // Step Progress Indicator
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                child: Row(
-                  children: List.generate(4, (index) {
-                    final isCompleted = index <= _currentStep;
-                    return Expanded(
-                      child: Container(
-                        height: 4,
-                        margin: EdgeInsets.only(right: index < 3 ? 6.0 : 0.0),
-                        decoration: BoxDecoration(
-                          color: isCompleted
-                              ? (isDark
-                                  ? AppColors.appleBlue
-                                  : AppColors.royalIndigo)
-                              : (isDark
-                                  ? AppColors.darkSurface
-                                  : Colors.black.withValues(alpha: 0.08)),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-
-              // Wizard Content
+              // Form Scroll Body
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(20.0),
-                  child: _buildStepContent(isDark, dateFormat, calendarDays),
-                ),
-              ),
-
-              // Bottom Navigation Buttons
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Row(
-                  children: [
-                    if (_currentStep > 0) ...[
-                      Expanded(
-                        child: GlassButton(
-                          label: 'Back',
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 12.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section 1: Trip Essentials
+                        _buildSectionHeader(
+                          title: 'TRIP ESSENTIALS',
+                          icon: CupertinoIcons.compass,
                           isDark: isDark,
-                          onPressed: () {
-                            HapticHelper.selectionClick();
-                            setState(() => _currentStep--);
+                        ),
+                        const SizedBox(height: 10),
+
+                        GlassTextField(
+                          controller: _titleController,
+                          labelText: 'Trip Name *',
+                          hintText: 'e.g. Darjeeling Mountain Retreat, Goa Beach Trip',
+                          prefixIcon: CupertinoIcons.tag_fill,
+                          isDark: isDark,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Please enter a trip name';
+                            }
+                            return null;
                           },
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      flex: 2,
-                      child: GlassButton(
-                        label: _currentStep == 3
-                            ? 'Plan Manually'
-                            : 'Continue',
-                        icon: _currentStep == 3
-                            ? CupertinoIcons.check_mark
-                            : CupertinoIcons.arrow_right,
-                        isDark: isDark,
-                        onPressed: () {
-                          if (_currentStep < 3) {
+                        const SizedBox(height: 14),
+
+                        GlassTextField(
+                          controller: _destinationController,
+                          labelText: 'Destination *',
+                          hintText: 'e.g. Darjeeling, West Bengal, India',
+                          prefixIcon: CupertinoIcons.placemark_fill,
+                          isDark: isDark,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Please enter a destination';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        GlassTextField(
+                          controller: _departureController,
+                          labelText: 'Starting Location (Optional)',
+                          hintText: 'e.g. Hijli, Kolkata, New Delhi',
+                          prefixIcon: CupertinoIcons.arrow_up_right_circle,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 22),
+
+                        // Section 2: Dates & Travellers
+                        _buildSectionHeader(
+                          title: 'DATES & TRAVELLERS',
+                          icon: CupertinoIcons.calendar,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Date Range Picker Card
+                        LiquidPop(
+                          onTap: () => _selectDateRange(context),
+                          child: GlassCard(
+                            isDark: isDark,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            borderRadius: 16,
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: (isDark
+                                            ? AppColors.appleBlue
+                                            : AppColors.royalIndigo)
+                                        .withValues(alpha: 0.16),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    CupertinoIcons.calendar,
+                                    size: 20,
+                                    color: isDark
+                                        ? AppColors.appleBlue
+                                        : AppColors.royalIndigo,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${dateFormat.format(_startDate)}  →  ${dateFormat.format(_endDate)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark
+                                              ? AppColors.darkTextPrimary
+                                              : AppColors.lightTextPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$calendarDays calendar days • Tap to change',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark
+                                              ? AppColors.appleBlue
+                                              : AppColors.royalIndigo,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  CupertinoIcons.chevron_right,
+                                  size: 14,
+                                  color: isDark
+                                      ? AppColors.darkTextMuted
+                                      : AppColors.lightTextMuted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Travellers Count Input
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GlassTextField(
+                                controller: _travelersController,
+                                labelText: 'Number of Travellers',
+                                hintText: '1',
+                                prefixIcon: CupertinoIcons.person_2_fill,
+                                keyboardType: TextInputType.number,
+                                isDark: isDark,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Required';
+                                  }
+                                  final num = int.tryParse(v.trim());
+                                  if (num == null || num < 1) {
+                                    return 'Min 1';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Quick Stepper Buttons
+                            Container(
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.darkSurface
+                                    : Colors.white.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0x22FFFFFF)
+                                      : const Color(0xFFCBD5E1),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(CupertinoIcons.minus,
+                                        size: 16),
+                                    onPressed: () {
+                                      final current = int.tryParse(
+                                              _travelersController.text) ??
+                                          1;
+                                      if (current > 1) {
+                                        HapticHelper.selectionClick();
+                                        _travelersController.text =
+                                            (current - 1).toString();
+                                      }
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon:
+                                        const Icon(CupertinoIcons.plus, size: 16),
+                                    onPressed: () {
+                                      final current = int.tryParse(
+                                              _travelersController.text) ??
+                                          1;
+                                      HapticHelper.selectionClick();
+                                      _travelersController.text =
+                                          (current + 1).toString();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+
+                        // Section 3: Trip Description
+                        _buildSectionHeader(
+                          title: 'TRIP DESCRIPTION (OPTIONAL)',
+                          icon: CupertinoIcons.doc_text,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 10),
+
+                        GlassTextField(
+                          controller: _descriptionController,
+                          labelText: 'Trip Description / Overview Notes',
+                          hintText:
+                              'e.g. Family vacation exploring scenic tea estates and high-altitude Himalayan viewpoints...',
+                          prefixIcon: CupertinoIcons.pencil,
+                          maxLines: 3,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Advanced Options Toggle (Budget & Preferences)
+                        LiquidPop(
+                          pressedScale: 0.96,
+                          onTap: () {
                             HapticHelper.selectionClick();
-                            setState(() => _currentStep++);
-                          } else {
-                            _commitTripCreation(planMethod: 'manual');
-                          }
-                        },
-                      ),
+                            setState(
+                                () => _showAdvancedOptions = !_showAdvancedOptions);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.darkSurface.withValues(alpha: 0.6)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _showAdvancedOptions
+                                      ? CupertinoIcons.chevron_up
+                                      : CupertinoIcons.chevron_down,
+                                  size: 14,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.lightTextSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _showAdvancedOptions
+                                        ? 'Hide Budget & Travel Preferences'
+                                        : 'Add Budget & Travel Preferences (Optional)',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.lightTextSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        if (_showAdvancedOptions) ...[
+                          const SizedBox(height: 16),
+                          _buildSectionHeader(
+                            title: 'ESTIMATED TRIP BUDGET',
+                            icon: CupertinoIcons.money_dollar,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 10),
+
+                          GlassTextField(
+                            controller: _budgetController,
+                            labelText: 'Overall Target Budget (₹)',
+                            hintText: 'e.g. 25000',
+                            prefixIcon: CupertinoIcons.money_dollar_circle,
+                            keyboardType: TextInputType.number,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassTextField(
+                                  controller: _transportBudgetController,
+                                  labelText: 'Transport (₹)',
+                                  hintText: '6000',
+                                  prefixIcon: CupertinoIcons.bus,
+                                  keyboardType: TextInputType.number,
+                                  isDark: isDark,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: GlassTextField(
+                                  controller: _stayBudgetController,
+                                  labelText: 'Stay (₹)',
+                                  hintText: '9000',
+                                  prefixIcon: CupertinoIcons.bed_double,
+                                  keyboardType: TextInputType.number,
+                                  isDark: isDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          GlassTextField(
+                            controller: _foodBudgetController,
+                            labelText: 'Food & Dining Budget (₹)',
+                            hintText: '5000',
+                            prefixIcon: CupertinoIcons.sparkles,
+                            keyboardType: TextInputType.number,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 18),
+
+                          _buildSectionHeader(
+                            title: 'TRAVEL PREFERENCES',
+                            icon: CupertinoIcons.heart,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 8),
+
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _availablePreferences.map((pref) {
+                              final isSelected =
+                                  _selectedPreferences.contains(pref);
+                              return FilterChip(
+                                label: Text(pref),
+                                selected: isSelected,
+                                selectedColor: (isDark
+                                        ? AppColors.appleBlue
+                                        : AppColors.royalIndigo)
+                                    .withValues(alpha: 0.25),
+                                checkmarkColor: isDark
+                                    ? AppColors.appleBlue
+                                    : AppColors.royalIndigo,
+                                labelStyle: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? (isDark
+                                          ? Colors.white
+                                          : AppColors.royalIndigo)
+                                      : (isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.lightTextSecondary),
+                                ),
+                                onSelected: (sel) {
+                                  HapticHelper.selectionClick();
+                                  setState(() {
+                                    if (sel) {
+                                      _selectedPreferences.add(pref);
+                                    } else {
+                                      _selectedPreferences.remove(pref);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 28),
+
+                        // Primary Action Button: Create Plan / Update Plan
+                        GlassButton(
+                          label: isEditing ? 'Update Plan' : 'Create Plan',
+                          icon: isEditing
+                              ? CupertinoIcons.check_mark_circled_solid
+                              : CupertinoIcons.add_circled_solid,
+                          variant: GlassButtonVariant.primary,
+                          isDark: isDark,
+                          isLoading: _isSubmitting,
+                          onPressed: _submitPlan,
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -376,467 +760,30 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
     );
   }
 
-  String _getStepTitle(int step) {
-    switch (step) {
-      case 0:
-        return 'Trip Details';
-      case 1:
-        return 'Travel Preferences';
-      case 2:
-        return 'Budget & Information';
-      case 3:
-        return 'Choose How to Plan';
-      default:
-        return '';
-    }
-  }
-
-  Widget _buildStepContent(bool isDark, DateFormat dateFormat, int calendarDays) {
-    switch (_currentStep) {
-      case 0:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Where are you going?',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Give your adventure a recognizable title and destination.',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            GlassTextField(
-              controller: _titleController,
-              labelText: 'Trip Title',
-              hintText: 'e.g. Darjeeling Trip',
-              prefixIcon: CupertinoIcons.tag,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 14),
-
-            GlassTextField(
-              controller: _destinationController,
-              labelText: 'Primary Destination',
-              hintText: 'e.g. Darjeeling, West Bengal, India',
-              prefixIcon: CupertinoIcons.placemark,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 14),
-
-            GlassTextField(
-              controller: _departureController,
-              labelText: 'Departure City / Location (Optional)',
-              hintText: 'e.g. Hijli / Kolkata',
-              prefixIcon: CupertinoIcons.arrow_up_right_circle,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 18),
-
-            // Date Range Picker Card
-            Text(
-              'Travel Dates ($calendarDays Calendar Days)',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            LiquidPop(
-              onTap: () => _selectDateRange(context),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                borderRadius: 16,
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.calendar,
-                      size: 20,
-                      color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${dateFormat.format(_startDate)}  →  ${dateFormat.format(_endDate)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.lightTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Tap to change dates',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? AppColors.darkTextMuted
-                                  : AppColors.lightTextMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(CupertinoIcons.chevron_right, size: 16),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            GlassTextField(
-              controller: _travelersController,
-              labelText: 'Number of Travelers',
-              hintText: '1',
-              prefixIcon: CupertinoIcons.person_2,
-              keyboardType: TextInputType.number,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 14),
-
-            GlassTextField(
-              controller: _descriptionController,
-              labelText: 'Trip Notes / Summary (Optional)',
-              hintText: 'Rented scooty, homestay preferences, scenic spots...',
-              prefixIcon: CupertinoIcons.pencil,
-              maxLines: 2,
-              isDark: isDark,
-            ),
-          ],
-        );
-
-      case 1:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'What do you love most?',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Select optional travel styles. These help curate relevant stops and organize your workspace.',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _availablePreferences.map((pref) {
-                final isSelected = _selectedPreferences.contains(pref);
-                return LiquidPop(
-                  pressedScale: 0.94,
-                  onTap: () {
-                    HapticHelper.selectionClick();
-                    setState(() {
-                      if (isSelected) {
-                        _selectedPreferences.remove(pref);
-                      } else {
-                        _selectedPreferences.add(pref);
-                      }
-                    });
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isDark
-                              ? AppColors.appleBlue.withValues(alpha: 0.25)
-                              : AppColors.royalIndigo.withValues(alpha: 0.15))
-                          : (isDark
-                              ? AppColors.darkSurface
-                              : Colors.black.withValues(alpha: 0.04)),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected
-                            ? (isDark
-                                ? AppColors.appleBlue
-                                : AppColors.royalIndigo)
-                            : (isDark
-                                ? const Color(0x1AFFFFFF)
-                                : const Color(0x1A000000)),
-                        width: isSelected ? 1.4 : 0.6,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isSelected
-                              ? CupertinoIcons.check_mark_circled_solid
-                              : CupertinoIcons.circle,
-                          size: 15,
-                          color: isSelected
-                              ? (isDark
-                                  ? AppColors.appleBlue
-                                  : AppColors.royalIndigo)
-                              : (isDark
-                                  ? AppColors.darkTextMuted
-                                  : AppColors.lightTextMuted),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          pref,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.lightTextPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        );
-
-      case 2:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Trip Budget & Estimates (Optional)',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Set spending targets for your journey. You can adjust these anytime.',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            GlassTextField(
-              controller: _budgetController,
-              labelText: 'Overall Trip Budget (₹)',
-              hintText: 'e.g. 25000',
-              prefixIcon: CupertinoIcons.money_dollar,
-              keyboardType: TextInputType.number,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: GlassTextField(
-                    controller: _transportBudgetController,
-                    labelText: 'Transport (₹)',
-                    hintText: '6000',
-                    prefixIcon: CupertinoIcons.bus,
-                    keyboardType: TextInputType.number,
-                    isDark: isDark,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GlassTextField(
-                    controller: _stayBudgetController,
-                    labelText: 'Stay (₹)',
-                    hintText: '9000',
-                    prefixIcon: CupertinoIcons.bed_double,
-                    keyboardType: TextInputType.number,
-                    isDark: isDark,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            GlassTextField(
-              controller: _foodBudgetController,
-              labelText: 'Food & Dining Budget (₹)',
-              hintText: '5000',
-              prefixIcon: CupertinoIcons.sparkles,
-              keyboardType: TextInputType.number,
-              isDark: isDark,
-            ),
-          ],
-        );
-
-      case 3:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Choose how to plan',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Select how you would like to initialize your itinerary.',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // Option A: Plan Manually
-            _PlanMethodCard(
-              title: 'Option A — Plan Manually',
-              subtitle:
-                  'Create the trip with $calendarDays empty calendar days and build each day yourself stop by stop.',
-              icon: CupertinoIcons.hammer_fill,
-              color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
-              isDark: isDark,
-              onTap: () => _commitTripCreation(planMethod: 'manual'),
-            ),
-            const SizedBox(height: 14),
-
-            // Option B: Start with a Template
-            _PlanMethodCard(
-              title: 'Option B — Start with Darjeeling Itinerary',
-              subtitle:
-                  'Initialize with complete 9-day Darjeeling schedule, MAS NJP SF Express, scooty rental, Live In Nature homestay, and 17 saved spots.',
-              icon: CupertinoIcons.sparkles,
-              color: AppColors.appleGreen,
-              isDark: isDark,
-              onTap: () => _commitTripCreation(planMethod: 'template'),
-            ),
-          ],
-        );
-
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-}
-
-class _PlanMethodCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final bool isDark;
-  final VoidCallback onTap;
-
-  const _PlanMethodCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      isDark: isDark,
-      padding: const EdgeInsets.all(18.0),
-      borderRadius: 18,
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: color),
+  Widget _buildSectionHeader({
+    required String title,
+    required IconData icon,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 13,
+          color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: AppTextStyles.labelUppercase.copyWith(
+            fontSize: 11,
+            color:
+                isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.lightTextPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Icon(
-            CupertinoIcons.chevron_right,
-            size: 16,
-            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

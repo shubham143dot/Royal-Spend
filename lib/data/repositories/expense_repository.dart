@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../../core/services/firestore/firestore_sync_service.dart';
 import '../database/database_helper.dart';
 import '../models/budget.dart';
 import '../models/expense.dart';
@@ -16,9 +18,13 @@ abstract class IExpenseRepository {
 
 class ExpenseRepository implements IExpenseRepository {
   final DatabaseHelper _dbHelper;
+  final FirestoreSyncService _syncService;
 
-  ExpenseRepository({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+  ExpenseRepository({
+    DatabaseHelper? dbHelper,
+    FirestoreSyncService? syncService,
+  })  : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _syncService = syncService ?? FirestoreSyncService.instance;
 
   @override
   Future<List<Expense>> getAllExpenses() async {
@@ -33,16 +39,19 @@ class ExpenseRepository implements IExpenseRepository {
   @override
   Future<void> addExpense(Expense expense) async {
     await _dbHelper.insertExpense(expense);
+    unawaited(_syncService.syncExpense(expense).catchError((_) {}));
   }
 
   @override
   Future<void> updateExpense(Expense expense) async {
     await _dbHelper.updateExpense(expense);
+    unawaited(_syncService.syncExpense(expense).catchError((_) {}));
   }
 
   @override
   Future<void> deleteExpense(String id) async {
     await _dbHelper.deleteExpense(id);
+    unawaited(_syncService.deleteExpense(id).catchError((_) {}));
   }
 
   @override
@@ -53,6 +62,7 @@ class ExpenseRepository implements IExpenseRepository {
   @override
   Future<void> saveBudget(Budget budget) async {
     await _dbHelper.setBudgetForMonth(budget);
+    unawaited(_syncService.syncBudget(budget).catchError((_) {}));
   }
 
   @override

@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Authentication & Authorization Helpers
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User Profile Document & Private Subcollections
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // 1. Expenses Subcollection
+      match /expenses/{expenseId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 2. Budgets Subcollection
+      match /budgets/{budgetId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 3. Trips Subcollection
+      match /trips/{tripId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 4. Itinerary Days Subcollection
+      match /itinerary_days/{dayId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 5. Itinerary Activities Subcollection
+      match /itinerary_activities/{activityId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 6. Saved Places Subcollection
+      match /saved_places/{placeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 7. Travel Transports Subcollection
+      match /travel_transports/{transportId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 8. Travel Accommodations Subcollection
+      match /travel_accommodations/{accommodationId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 9. Travel Checklists Subcollection
+      match /travel_checklists/{checklistId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 10. Travel Splits / Bill Splitting Subcollection
+      match /travel_splits/{splitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Secure catch-all for any user-scoped subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Default deny for unmapped documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

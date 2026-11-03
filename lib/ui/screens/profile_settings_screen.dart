@@ -1,21 +1,27 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/auth/firebase_auth_gateway.dart';
+import '../../core/services/firestore/firestore_sync_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/glass_decorations.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/utils/haptic_helper.dart';
+import '../../data/database/database_helper.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/travel_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/google_brand_icon.dart';
 import '../widgets/liquid_pop.dart';
@@ -371,7 +377,6 @@ class ProfileSettingsScreen extends StatelessWidget {
     final displayName = (user?.displayName != null && user!.displayName!.isNotEmpty)
         ? user.displayName!
         : (settings.userName.isNotEmpty ? settings.userName : 'Royal Member');
-    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'R';
 
     final String subtitleText;
     if (isGoogle) {
@@ -388,43 +393,40 @@ class ProfileSettingsScreen extends StatelessWidget {
 
     return LiquidPop(
       pressedScale: 0.985,
-      onTap: () => _showNameDialog(context, settings),
+      onTap: () => _showProfileActions(context, settings),
       child: GlassCard(
         isDark: isDark,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.royalGradient,
-              ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
+            _buildAvatar(context, settings, user),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayName,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                      letterSpacing: -0.3,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        CupertinoIcons.pencil_circle_fill,
+                        size: 16,
+                        color: AppColors.royalGold.withValues(alpha: 0.8),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -449,6 +451,213 @@ class ProfileSettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildAvatar(BuildContext context, SettingsProvider settings, User? user) {
+    final photoUrl = user?.photoURL ?? settings.profilePhotoUrl;
+    final displayName = (user?.displayName != null && user!.displayName!.isNotEmpty)
+        ? user.displayName!
+        : (settings.userName.isNotEmpty ? settings.userName : 'Royal Member');
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'R';
+
+    Widget imageContent;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+        imageContent = Image.network(
+          photoUrl,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stack) => _buildFallbackInitial(initial),
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.royalGold,
+                ),
+              ),
+            );
+          },
+        );
+      } else {
+        final file = File(photoUrl);
+        if (file.existsSync()) {
+          imageContent = Image.file(
+            file,
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+            errorBuilder: (_, error, stack) => _buildFallbackInitial(initial),
+          );
+        } else {
+          imageContent = _buildFallbackInitial(initial);
+        }
+      }
+    } else {
+      imageContent = _buildFallbackInitial(initial);
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.royalGold.withValues(alpha: 0.75),
+              width: 2.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.royalGold.withValues(alpha: 0.28),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: ClipOval(child: imageContent),
+        ),
+        Positioned(
+          bottom: -1,
+          right: -1,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.royalGold,
+              border: Border.all(color: Colors.black, width: 1.5),
+            ),
+            child: const Center(
+              child: Icon(
+                CupertinoIcons.camera_fill,
+                size: 10,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFallbackInitial(String initial) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppColors.royalGradient,
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showProfileActions(BuildContext context, SettingsProvider settings) {
+    HapticHelper.mediumImpact();
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Profile Settings'),
+        message: const Text('Update your profile details and picture'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _showNameDialog(context, settings);
+            },
+            child: const Text('Edit Display Name'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _pickAndUploadPhoto(context, settings, ImageSource.gallery);
+            },
+            child: const Text('Choose Photo from Gallery'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _pickAndUploadPhoto(context, settings, ImageSource.camera);
+            },
+            child: const Text('Take Photo with Camera'),
+          ),
+          if (settings.profilePhotoUrl != null || _getFirebaseUser()?.photoURL != null)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                HapticHelper.mediumImpact();
+                await settings.setProfilePhotoUrl(null);
+                try {
+                  if (Firebase.apps.isNotEmpty) {
+                    await FirebaseAuthGateway().updateProfile(photoURL: '');
+                  }
+                } catch (_) {}
+              },
+              child: const Text('Remove Photo'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadPhoto(
+    BuildContext context,
+    SettingsProvider settings,
+    ImageSource source,
+  ) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      final fileSize = await file.length();
+      if (fileSize > 5 * 1024 * 1024) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image must be under 5MB.')),
+        );
+        return;
+      }
+
+      // Save local path immediately for instantaneous UI update
+      await settings.setProfilePhotoUrl(file.path);
+
+      // If user is authenticated with Firebase, upload to Storage
+      if (Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null) {
+        final gateway = FirebaseAuthGateway();
+        final downloadUrl = await gateway.uploadProfileImage(file);
+        await settings.setProfilePhotoUrl(downloadUrl);
+      }
+    } catch (e) {
+      debugPrint('Photo upload note: $e');
+    }
   }
 
   Widget _buildAccountCard(BuildContext context, SettingsProvider settings, bool isDark) {
@@ -487,7 +696,45 @@ class ProfileSettingsScreen extends StatelessWidget {
                       : 'Firebase Cloud Account ($userEmail)',
               trailingText: 'Active',
               isDark: isDark,
-              onTap: () {},
+              onTap: () => _showProfileActions(context, settings),
+            ),
+            _buildDivider(isDark),
+            _buildSettingsTile(
+              icon: CupertinoIcons.arrow_2_circlepath_circle_fill,
+              iconColor: AppColors.appleGreen,
+              title: 'Sync Now',
+              subtitle: 'Replicate data across devices with Firebase',
+              trailingText: 'Manual',
+              isDark: isDark,
+              onTap: () async {
+                HapticHelper.mediumImpact();
+                final expenseProv = context.read<ExpenseProvider>();
+                final travelProv = context.read<TravelProvider>();
+                await FirestoreSyncService.instance.syncAll(
+                  user.uid,
+                  onRefresh: () {
+                    expenseProv.refresh();
+                    travelProv.refresh();
+                  },
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xE810131E),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: AppColors.royalGold.withValues(alpha: 0.5)),
+                      ),
+                      content: const Text(
+                        'Cloud synchronization complete.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
             ),
             _buildDivider(isDark),
           ] else ...[
@@ -524,6 +771,82 @@ class ProfileSettingsScreen extends StatelessWidget {
               isEmail: isEmail,
               email: userEmail,
             ),
+          ),
+          if (user != null) ...[
+            _buildDivider(isDark),
+            _buildSettingsTile(
+              icon: CupertinoIcons.trash_circle_fill,
+              iconColor: AppColors.appleRed,
+              title: 'Delete Account & Cloud Data',
+              titleColor: AppColors.appleRed,
+              subtitle: 'Permanently remove account and cloud database records',
+              isDark: isDark,
+              onTap: () => _confirmDeleteAccount(context, settings),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, SettingsProvider settings) {
+    HapticHelper.heavyImpact();
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Delete Royal Spend Account?'),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 8.0),
+          child: Text(
+            'This action is irreversible.\n\nAll your cloud-saved expenses, budgets, travel plans, itineraries, and uploaded profile photos will be permanently deleted from Firebase.',
+            style: TextStyle(fontSize: 13),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final expenseProv = context.read<ExpenseProvider>();
+              final travelProv = context.read<TravelProvider>();
+
+              Navigator.of(ctx).pop();
+              HapticHelper.heavyImpact();
+
+              try {
+                if (Firebase.apps.isNotEmpty) {
+                  final gateway = FirebaseAuthGateway();
+                  await gateway.deleteAccount();
+                }
+              } catch (e) {
+                debugPrint('Delete account error: $e');
+              }
+
+              // Clean local data
+              try {
+                await expenseProv.clearAllData();
+                await DatabaseHelper.instance.clearAllTravelData();
+                await travelProv.refresh();
+              } catch (_) {}
+
+              await settings.logout();
+
+              navigator.pushAndRemoveUntil<void>(
+                PageRouteBuilder<void>(
+                  transitionDuration: const Duration(milliseconds: 400),
+                  pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                ),
+                (route) => false,
+              );
+            },
+            child: const Text('Permanently Delete'),
           ),
         ],
       ),
@@ -1068,12 +1391,17 @@ class ProfileSettingsScreen extends StatelessWidget {
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: () {
+            onPressed: () async {
               final val = controller.text.trim();
               if (val.isNotEmpty) {
-                settings.setUserName(val);
+                await settings.setUserName(val);
+                try {
+                  if (Firebase.apps.isNotEmpty) {
+                    await FirebaseAuthGateway().updateProfile(displayName: val);
+                  }
+                } catch (_) {}
               }
-              Navigator.pop(ctx);
+              if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('Save'),
           ),

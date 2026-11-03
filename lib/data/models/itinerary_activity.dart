@@ -239,15 +239,36 @@ class ItineraryActivity {
   }
 
   factory ItineraryActivity.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is num) return DateTime.fromMillisecondsSinceEpoch(val.toInt());
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      try {
+        final dynamic d = val;
+        return d.toDate() as DateTime;
+      } catch (_) {}
+      return DateTime.now();
+    }
+
+    bool parseBool(dynamic val, {bool defaultValue = false}) {
+      if (val == null) return defaultValue;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      if (val is String) return val.toLowerCase() == 'true' || val == '1';
+      return defaultValue;
+    }
+
     return ItineraryActivity(
-      id: map['id'] as String,
-      tripId: map['trip_id'] as String,
-      dayId: map['day_id'] as String,
-      title: map['title'] as String,
+      id: map['id']?.toString() ?? '',
+      tripId: map['trip_id']?.toString() ?? '',
+      dayId: map['day_id']?.toString() ?? '',
+      title: map['title']?.toString() ?? '',
       placeName: map['place_name'] as String?,
       startTime: map['start_time'] as String?,
       endTime: map['end_time'] as String?,
-      durationMinutes: map['duration_minutes'] as int?,
+      durationMinutes: (map['duration_minutes'] as num?)?.toInt(),
       category: ActivityCategory.values.firstWhere(
         (c) => c.name == map['category'],
         orElse: () => ActivityCategory.sightseeing,
@@ -262,14 +283,12 @@ class ItineraryActivity {
         orElse: () => BookingStatus.unconfirmed,
       ),
       bookingReference: map['booking_reference'] as String?,
-      isCompleted: (map['is_completed'] as int) == 1,
-      isDestinationConfirmed: (map['is_destination_confirmed'] as int? ?? 1) == 1,
-      isOvernight: (map['is_overnight'] as int? ?? 0) == 1,
-      sortOrder: (map['sort_order'] as int?) ?? 0,
-      createdAt:
-          DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
-      updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
+      isCompleted: parseBool(map['is_completed'], defaultValue: false),
+      isDestinationConfirmed: parseBool(map['is_destination_confirmed'], defaultValue: true),
+      isOvernight: parseBool(map['is_overnight'], defaultValue: false),
+      sortOrder: (map['sort_order'] as num?)?.toInt() ?? 0,
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 }

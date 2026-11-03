@@ -51,6 +51,7 @@ dependencies:
   firebase_auth: ^7.0.1
   cloud_firestore: ^7.1.0
   google_sign_in: 6.2.2
+  firebase_storage: ^14.0.1
 
 dev_dependencies:
   flutter_test:
@@ -70,8 +71,8 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   image_path: "assets/icons/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#030303"
-  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#080A10"
+  adaptive_icon_foreground: "assets/icons/app_icon_adaptive_foreground.png"
   adaptive_icon_foreground_inset: 0
   web:
     generate: true

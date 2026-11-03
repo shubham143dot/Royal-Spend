@@ -86,12 +86,37 @@ class SettingsRepository {
 
   Future<bool> hasCompletedIntro() async {
     final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(AppConstants.keyHasSeenIntro);
+    if (seen != null) return seen;
     return prefs.getBool(AppConstants.keyHasCompletedIntro) ?? false;
   }
 
   Future<void> setHasCompletedIntro(bool completed) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.keyHasCompletedIntro, completed);
+    await prefs.setBool(AppConstants.keyHasSeenIntro, completed);
+  }
+
+  Future<bool> hasSeenIntro() async {
+    return await hasCompletedIntro();
+  }
+
+  Future<void> setHasSeenIntro(bool seen) async {
+    await setHasCompletedIntro(seen);
+  }
+
+  Future<String?> getUserProfilePhoto() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(AppConstants.keyUserProfilePhoto);
+  }
+
+  Future<void> setUserProfilePhoto(String? photoUrl) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (photoUrl == null || photoUrl.isEmpty) {
+      await prefs.remove(AppConstants.keyUserProfilePhoto);
+    } else {
+      await prefs.setString(AppConstants.keyUserProfilePhoto, photoUrl);
+    }
   }
 
   Future<bool> isAuthenticated() async {

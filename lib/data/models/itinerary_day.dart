@@ -61,18 +61,37 @@ class ItineraryDay {
   }
 
   factory ItineraryDay.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is num) return DateTime.fromMillisecondsSinceEpoch(val.toInt());
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      try {
+        final dynamic d = val;
+        return d.toDate() as DateTime;
+      } catch (_) {}
+      return DateTime.now();
+    }
+
+    bool parseBool(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      if (val is String) return val.toLowerCase() == 'true' || val == '1';
+      return false;
+    }
+
     return ItineraryDay(
-      id: map['id'] as String,
-      tripId: map['trip_id'] as String,
-      dayNumber: map['day_number'] as int,
-      date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
+      id: map['id']?.toString() ?? '',
+      tripId: map['trip_id']?.toString() ?? '',
+      dayNumber: (map['day_number'] as num?)?.toInt() ?? 1,
+      date: parseDate(map['date']),
       title: map['title'] as String?,
       notes: map['notes'] as String?,
-      isCompleted: (map['is_completed'] as int) == 1,
-      createdAt:
-          DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
-      updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
+      isCompleted: parseBool(map['is_completed']),
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 }

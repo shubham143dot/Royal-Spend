@@ -2,10 +2,12 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/haptic_helper.dart';
+import '../../../providers/settings_provider.dart';
 import '../../widgets/liquid_pop.dart';
 import '../../widgets/royal_glass_button.dart';
 import '../auth/login_screen.dart';
@@ -162,6 +164,11 @@ class _IntroScreenState extends State<IntroScreen>
   Future<void> _handleGetStarted() async {
     if (_isNavigating) return;
     _isNavigating = true;
+
+    // Persist installation-level flag independent of Firebase auth
+    try {
+      context.read<SettingsProvider>().setHasSeenIntro(true);
+    } catch (_) {}
 
     // Super smooth custom transition into LoginScreen
     await Navigator.of(context).push(

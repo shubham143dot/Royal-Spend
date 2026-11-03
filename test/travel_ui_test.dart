@@ -182,10 +182,10 @@ void main() {
       await tester.pumpWidget(createTestApp(const CreatePlanWizardScreen()));
       await tester.pumpAndSettle();
 
-      // Verify header and initial step
+      // Verify header, destination prompt, and create plan action
       expect(find.text('Create New Plan'), findsOneWidget);
       expect(find.text('Where are you going?'), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('Create Plan'), findsOneWidget);
     });
 
     testWidgets('Expense FAB is on Expenses tab, Travel FAB is on Travel tab, others have none', (tester) async {
