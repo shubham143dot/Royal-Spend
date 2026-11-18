@@ -176,6 +176,17 @@ void main() {
       // Verify raw URL is NOT shown in front of the user
       expect(find.text('https://sites.google.com/view/royalspend/home'), findsNothing);
 
+      // Verify Support & Help and Account Deletion Request sections
+      expect(find.text('SUPPORT & HELP'), findsOneWidget);
+      expect(find.text('Support & Help'), findsOneWidget);
+      expect(find.text('ACCOUNT DELETION REQUEST'), findsOneWidget);
+      expect(find.text('Account Deletion Request'), findsOneWidget);
+      // Verify raw form URL is NOT shown in front of the user
+      expect(
+        find.textContaining('docs.google.com/forms'),
+        findsNothing,
+      );
+
       // Verify redesigned About section
       expect(find.text('ABOUT'), findsOneWidget);
       expect(find.text('v1.0.0 Personal Finance Edition'), findsOneWidget);

@@ -309,6 +309,45 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ],
 
+          // Section: Support & Help
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              child: Text(
+                'SUPPORT & HELP',
+                style: AppTextStyles.labelUppercase.copyWith(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: GlassCard(
+                isDark: isDark,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  children: [
+                    _buildSettingsTile(
+                      icon: CupertinoIcons.question_circle_fill,
+                      iconColor: AppColors.appleBlue,
+                      title: 'Support & Help',
+                      trailingWidget: const Icon(
+                        CupertinoIcons.arrow_up_right,
+                        size: 15,
+                        color: AppColors.royalGold,
+                      ),
+                      isDark: isDark,
+                      onTap: () => PrivacyLauncher.openSupportEmail(context),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           // Section: Legal & Privacy
           SliverToBoxAdapter(
             child: Padding(
@@ -341,6 +380,45 @@ class ProfileSettingsScreen extends StatelessWidget {
                       ),
                       isDark: isDark,
                       onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Section: Account Deletion Request
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              child: Text(
+                'ACCOUNT DELETION REQUEST',
+                style: AppTextStyles.labelUppercase.copyWith(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: GlassCard(
+                isDark: isDark,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  children: [
+                    _buildSettingsTile(
+                      icon: CupertinoIcons.trash_fill,
+                      iconColor: AppColors.roseExpense,
+                      title: 'Account Deletion Request',
+                      trailingWidget: const Icon(
+                        CupertinoIcons.arrow_up_right,
+                        size: 15,
+                        color: AppColors.royalGold,
+                      ),
+                      isDark: isDark,
+                      onTap: () => PrivacyLauncher.openAccountDeletionForm(context),
                     ),
                   ],
                 ),

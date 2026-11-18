@@ -19,6 +19,9 @@ class AppConstants {
   // Legal & Privacy Configuration
   static const String privacyPolicyUrl = 'https://sites.google.com/view/royalspend/home';
   static const String privacyEmail = 'royalshubhampixellabs@gmail.com';
+  static const String supportEmail = 'royalshubhampixellabs@gmail.com';
+  static const String accountDeletionFormUrl =
+      'https://docs.google.com/forms/d/e/1FAIpQLSdPLTxsFEDmvbBBmaJHurXPQl1DdMwDefiNb33a83lFNdZNAg/viewform?usp=publish-editor';
 
   /// Helper to check whether an email address matches the designated admin email.
   static bool isAdmin(String? email) {
