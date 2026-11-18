@@ -97,9 +97,7 @@ class _LiquidPopState extends State<LiquidPop> {
           scale: targetScale,
           duration: duration,
           curve: curve,
-          child: RepaintBoundary(
-            child: widget.child,
-          ),
+          child: widget.child,
         ),
       ),
     );

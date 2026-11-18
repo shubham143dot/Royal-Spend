@@ -58,7 +58,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        cacheExtent: 1200.0,
         slivers: [
           // Header Bar
           SliverToBoxAdapter(

@@ -35,7 +35,6 @@ class ProfileSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final expenseProvider = context.watch<ExpenseProvider>();
     AppLockProvider? appLock;
     try {
       appLock = context.watch<AppLockProvider>();
@@ -47,7 +46,8 @@ class ProfileSettingsScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        cacheExtent: 1400.0,
         slivers: [
           // Header Bar
           SliverToBoxAdapter(
@@ -67,9 +67,11 @@ class ProfileSettingsScreen extends StatelessWidget {
 
           // User Profile Card
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-              child: _buildProfileCard(context, settings, isDark),
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                child: _buildProfileCard(context, settings, isDark),
+              ),
             ),
           ),
 
@@ -87,9 +89,11 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: _buildAccountCard(context, settings, isDark),
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: _buildAccountCard(context, settings, isDark),
+              ),
             ),
           ),
 
@@ -107,9 +111,11 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: _buildAppearanceCard(context, settings, isDark),
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: _buildAppearanceCard(context, settings, isDark),
+              ),
             ),
           ),
 
@@ -127,34 +133,41 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  children: [
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.money_dollar,
-                      iconColor: AppColors.appleGreen,
-                      title: 'Currency',
-                      trailingText: '${settings.currencyCode} (${settings.currencySymbol})',
-                      isDark: isDark,
-                      onTap: () => _showCurrencyDialog(context, settings),
-                    ),
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.slider_horizontal_3,
-                      iconColor: AppColors.appleBlue,
-                      title: 'Monthly Budget',
-                      trailingText: CurrencyFormatter.format(
-                        expenseProvider.monthlyLimit,
-                        symbol: settings.currencySymbol,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.money_dollar,
+                        iconColor: AppColors.appleGreen,
+                        title: 'Currency',
+                        trailingText: '${settings.currencyCode} (${settings.currencySymbol})',
+                        isDark: isDark,
+                        onTap: () => _showCurrencyDialog(context, settings),
                       ),
-                      isDark: isDark,
-                      onTap: () => SetBudgetSheet.show(context),
-                    ),
-                  ],
+                      _buildDivider(isDark),
+                      Selector<ExpenseProvider, double>(
+                        selector: (_, p) => p.monthlyLimit,
+                        builder: (context, monthlyLimit, _) {
+                          return _buildSettingsTile(
+                            icon: CupertinoIcons.slider_horizontal_3,
+                            iconColor: AppColors.appleBlue,
+                            title: 'Monthly Budget',
+                            trailingText: CurrencyFormatter.format(
+                              monthlyLimit,
+                              symbol: settings.currencySymbol,
+                            ),
+                            isDark: isDark,
+                            onTap: () => SetBudgetSheet.show(context),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -174,54 +187,56 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(7.5),
-                              color: AppColors.applePurple,
-                            ),
-                            child: const Center(
-                              child: Icon(CupertinoIcons.waveform, size: 17, color: Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Flexible(
-                            child: Text(
-                              'Tactile Haptics',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                letterSpacing: -0.2,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(7.5),
+                                color: AppColors.applePurple,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              child: const Center(
+                                child: Icon(CupertinoIcons.waveform, size: 17, color: Colors.white),
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 14),
+                            Flexible(
+                              child: Text(
+                                'Tactile Haptics',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    CupertinoSwitch(
-                      value: settings.hapticsEnabled,
-                      activeTrackColor: AppColors.appleGreen,
-                      onChanged: (val) {
-                        HapticHelper.mediumImpact();
-                        settings.setHapticsEnabled(val);
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      CupertinoSwitch(
+                        value: settings.hapticsEnabled,
+                        activeTrackColor: AppColors.appleGreen,
+                        onChanged: (val) {
+                          HapticHelper.mediumImpact();
+                          settings.setHapticsEnabled(val);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -241,9 +256,11 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: _buildSecurityCard(context, appLock, isDark),
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: _buildSecurityCard(context, appLock, isDark),
+              ),
             ),
           ),
 
@@ -262,47 +279,49 @@ class ProfileSettingsScreen extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: GlassCard(
-                  isDark: isDark,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    children: [
-                      _buildSettingsTile(
-                        icon: CupertinoIcons.sparkles,
-                        iconColor: AppColors.appleOrange,
-                        title: 'Load Realistic Sample Data',
-                        subtitle: 'Populate expenses across categories',
-                        isDark: isDark,
-                        onTap: () => _confirmSeedData(context, expenseProvider),
-                      ),
-                      _buildDivider(isDark),
-                      _buildSettingsTile(
-                        icon: CupertinoIcons.play_circle_fill,
-                        iconColor: AppColors.royalGold,
-                        title: 'Replay Intro & Brand Video',
-                        subtitle: 'Experience the Royal Spend cinematic intro',
-                        isDark: isDark,
-                        onTap: () {
-                          HapticHelper.mediumImpact();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const IntroScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildDivider(isDark),
-                      _buildSettingsTile(
-                        icon: CupertinoIcons.trash_fill,
-                        iconColor: AppColors.appleRed,
-                        title: 'Clear All Expenses',
-                        subtitle: 'Permanently remove all local transaction records',
-                        isDark: isDark,
-                        onTap: () => _confirmClearData(context, expenseProvider),
-                      ),
-                    ],
+              child: RepaintBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: GlassCard(
+                    isDark: isDark,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      children: [
+                        _buildSettingsTile(
+                          icon: CupertinoIcons.sparkles,
+                          iconColor: AppColors.appleOrange,
+                          title: 'Load Realistic Sample Data',
+                          subtitle: 'Populate expenses across categories',
+                          isDark: isDark,
+                          onTap: () => _confirmSeedData(context, context.read<ExpenseProvider>()),
+                        ),
+                        _buildDivider(isDark),
+                        _buildSettingsTile(
+                          icon: CupertinoIcons.play_circle_fill,
+                          iconColor: AppColors.royalGold,
+                          title: 'Replay Intro & Brand Video',
+                          subtitle: 'Experience the Royal Spend cinematic intro',
+                          isDark: isDark,
+                          onTap: () {
+                            HapticHelper.mediumImpact();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const IntroScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(isDark),
+                        _buildSettingsTile(
+                          icon: CupertinoIcons.trash_fill,
+                          iconColor: AppColors.appleRed,
+                          title: 'Clear All Expenses',
+                          subtitle: 'Permanently remove all local transaction records',
+                          isDark: isDark,
+                          onTap: () => _confirmClearData(context, context.read<ExpenseProvider>()),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -323,26 +342,28 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  children: [
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.question_circle_fill,
-                      iconColor: AppColors.appleBlue,
-                      title: 'Support & Help',
-                      trailingWidget: const Icon(
-                        CupertinoIcons.arrow_up_right,
-                        size: 15,
-                        color: AppColors.royalGold,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.question_circle_fill,
+                        iconColor: AppColors.appleBlue,
+                        title: 'Support & Help',
+                        trailingWidget: const Icon(
+                          CupertinoIcons.arrow_up_right,
+                          size: 15,
+                          color: AppColors.royalGold,
+                        ),
+                        isDark: isDark,
+                        onTap: () => PrivacyLauncher.openSupportEmail(context),
                       ),
-                      isDark: isDark,
-                      onTap: () => PrivacyLauncher.openSupportEmail(context),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -362,26 +383,28 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  children: [
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.shield_lefthalf_fill,
-                      iconColor: AppColors.royalGold,
-                      title: 'Privacy Policy',
-                      trailingWidget: const Icon(
-                        CupertinoIcons.arrow_up_right,
-                        size: 15,
-                        color: AppColors.royalGold,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.shield_lefthalf_fill,
+                        iconColor: AppColors.royalGold,
+                        title: 'Privacy Policy',
+                        trailingWidget: const Icon(
+                          CupertinoIcons.arrow_up_right,
+                          size: 15,
+                          color: AppColors.royalGold,
+                        ),
+                        isDark: isDark,
+                        onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
                       ),
-                      isDark: isDark,
-                      onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -401,26 +424,28 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  children: [
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.trash_fill,
-                      iconColor: AppColors.roseExpense,
-                      title: 'Account Deletion Request',
-                      trailingWidget: const Icon(
-                        CupertinoIcons.arrow_up_right,
-                        size: 15,
-                        color: AppColors.royalGold,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.trash_fill,
+                        iconColor: AppColors.roseExpense,
+                        title: 'Account Deletion Request',
+                        trailingWidget: const Icon(
+                          CupertinoIcons.arrow_up_right,
+                          size: 15,
+                          color: AppColors.royalGold,
+                        ),
+                        isDark: isDark,
+                        onTap: () => PrivacyLauncher.openAccountDeletionForm(context),
                       ),
-                      isDark: isDark,
-                      onTap: () => PrivacyLauncher.openAccountDeletionForm(context),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -440,14 +465,15 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: GlassCard(
-                isDark: isDark,
-                borderRadius: 24,
-                borderColor: AppColors.royalGold.withValues(alpha: isDark ? 0.22 : 0.18),
-                padding: const EdgeInsets.all(22),
-                child: Column(
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  borderRadius: 24,
+                  borderColor: AppColors.royalGold.withValues(alpha: isDark ? 0.22 : 0.18),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -596,8 +622,9 @@ class ProfileSettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
+        const SliverToBoxAdapter(child: SizedBox(height: 110)),
         ],
       ),
     );
@@ -713,6 +740,8 @@ class ProfileSettingsScreen extends StatelessWidget {
           photoUrl,
           width: 56,
           height: 56,
+          cacheWidth: 168,
+          cacheHeight: 168,
           fit: BoxFit.cover,
           errorBuilder: (_, error, stack) => _buildFallbackInitial(initial),
           loadingBuilder: (context, child, progress) {
@@ -730,18 +759,15 @@ class ProfileSettingsScreen extends StatelessWidget {
           },
         );
       } else {
-        final file = File(photoUrl);
-        if (file.existsSync()) {
-          imageContent = Image.file(
-            file,
-            width: 56,
-            height: 56,
-            fit: BoxFit.cover,
-            errorBuilder: (_, error, stack) => _buildFallbackInitial(initial),
-          );
-        } else {
-          imageContent = _buildFallbackInitial(initial);
-        }
+        imageContent = Image.file(
+          File(photoUrl),
+          width: 56,
+          height: 56,
+          cacheWidth: 168,
+          cacheHeight: 168,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stack) => _buildFallbackInitial(initial),
+        );
       }
     } else {
       imageContent = _buildFallbackInitial(initial);

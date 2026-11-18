@@ -90,7 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Stack(
         children: [
           CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            cacheExtent: 1200.0,
             slivers: [
           // Header / Greeting App Bar
           SliverToBoxAdapter(

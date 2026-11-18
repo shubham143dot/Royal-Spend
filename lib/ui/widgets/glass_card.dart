@@ -16,6 +16,7 @@ class GlassCard extends StatelessWidget {
   final Color? borderColor;
   final Gradient? gradient;
   final double blurSigma;
+  final bool enableBlur;
 
   const GlassCard({
     super.key,
@@ -29,6 +30,7 @@ class GlassCard extends StatelessWidget {
     this.borderColor,
     this.gradient,
     this.blurSigma = GlassDecorations.defaultBlurSigma,
+    this.enableBlur = false,
   });
 
   @override
@@ -47,10 +49,9 @@ class GlassCard extends StatelessWidget {
       child: child,
     );
 
-    // In Dark Mode, Apple uses solid Secondary System Grouped (#1C1C1E) over OLED black (#000000).
-    // Bypassing real-time BackdropFilter in dark mode completely eliminates rasterizer stalls
-    // and guarantees 120 FPS lag-free scrolling across all elements.
-    if (blurSigma > 0 && !highContrast && !isDark) {
+    // Solid high-performance liquid glass rendering guarantees 120 FPS lag-free scrolling across all devices.
+    // Real-time BackdropFilter is reserved only for floating modals where enableBlur is explicitly requested.
+    if (enableBlur && blurSigma > 0 && !highContrast) {
       cardBody = ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: BackdropFilter(

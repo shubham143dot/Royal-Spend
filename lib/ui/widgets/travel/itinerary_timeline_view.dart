@@ -97,7 +97,8 @@ class _ItineraryTimelineViewState extends State<ItineraryTimelineView> {
     }).toList();
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      cacheExtent: 1200.0,
       slivers: [
         SliverToBoxAdapter(
           child: Column(

@@ -26,6 +26,10 @@ import 'package:royal_spend/ui/widgets/security/app_lock_gate.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Configure bounded ImageCache to prevent memory pressure on 2GB-3GB low-end devices
+  PaintingBinding.instance.imageCache.maximumSize = 100;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024; // 50MB
+
   // Initialize Firebase (safely catches unconfigured platform environments)
   try {
     await Firebase.initializeApp(
@@ -34,7 +38,7 @@ void main() async {
     if (!kIsWeb) {
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true,
-        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        cacheSizeBytes: 104857600, // 100MB bounded cache to prevent OOM
       );
     }
   } catch (e) {

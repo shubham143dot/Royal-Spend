@@ -93,7 +93,8 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
         child: SafeArea(
           bottom: false,
           child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            cacheExtent: 1200.0,
             slivers: [
               // Header Sliver
               SliverToBoxAdapter(
