@@ -20,8 +20,17 @@ import 'trip_workspace_screen.dart';
 
 class CreatePlanWizardScreen extends StatefulWidget {
   final Trip? tripToEdit;
+  final String? initialTitle;
+  final String? initialDestination;
+  final String? initialPreference;
 
-  const CreatePlanWizardScreen({super.key, this.tripToEdit});
+  const CreatePlanWizardScreen({
+    super.key,
+    this.tripToEdit,
+    this.initialTitle,
+    this.initialDestination,
+    this.initialPreference,
+  });
 
   @override
   State<CreatePlanWizardScreen> createState() => _CreatePlanWizardScreenState();
@@ -66,8 +75,8 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
     super.initState();
     final t = widget.tripToEdit;
 
-    _titleController = TextEditingController(text: t?.title ?? '');
-    _destinationController = TextEditingController(text: t?.destination ?? '');
+    _titleController = TextEditingController(text: t?.title ?? widget.initialTitle ?? '');
+    _destinationController = TextEditingController(text: t?.destination ?? widget.initialDestination ?? '');
     _departureController = TextEditingController(text: t?.departureCity ?? '');
     _descriptionController = TextEditingController(text: t?.description ?? '');
     _travelersController = TextEditingController(
@@ -102,7 +111,11 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
       _selectedPreferences.addAll(t.preferences);
       _showAdvancedOptions = t.budget > 0 || t.preferences.isNotEmpty;
     } else {
-      _selectedPreferences.addAll(['Mountains', 'Nature', 'Scenic viewpoints']);
+      if (widget.initialPreference != null && widget.initialPreference!.isNotEmpty) {
+        _selectedPreferences.add(widget.initialPreference!);
+      } else {
+        _selectedPreferences.addAll(['Mountains', 'Nature', 'Scenic viewpoints']);
+      }
     }
   }
 
