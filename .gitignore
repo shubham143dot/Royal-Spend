@@ -46,6 +46,7 @@ app.*.map.json
 
 .gradle/
 android/.gradle/
+android/.kotlin/
 android/build/
 
 # Security & Secrets
