@@ -16,6 +16,10 @@ class AppConstants {
   // Admin Configuration
   static const String adminEmail = 'subhamsoudeep@gmail.com';
 
+  // Legal & Privacy Configuration
+  static const String privacyPolicyUrl = 'https://sites.google.com/view/royalspend/home';
+  static const String privacyEmail = 'royalshubhampixellabs@gmail.com';
+
   /// Helper to check whether an email address matches the designated admin email.
   static bool isAdmin(String? email) {
     if (email == null) return false;

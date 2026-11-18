@@ -7,6 +7,7 @@
 **Developer / Organization:** Royal Shubham Pixel Labs (“we”, “our”, or “us”)  
 **Data Protection & Privacy Contact:** [royalshubhampixellabs@gmail.com](mailto:royalshubhampixellabs@gmail.com)  
 **Administrative Contact:** [subhamsoudeep@gmail.com](mailto:subhamsoudeep@gmail.com)  
+**Official Online Privacy Policy:** [https://sites.google.com/view/royalspend/home](https://sites.google.com/view/royalspend/home)  
 
 ---
 

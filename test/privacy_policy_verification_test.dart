@@ -61,6 +61,7 @@ void main() {
       expect(content, contains('royalshubhampixellabs@gmail.com'));
       expect(content, contains('subhamsoudeep@gmail.com'));
       expect(content, isNot(contains('https://sites.google.com/view/royal-pixels-privacy/home')));
+      expect(content, contains('https://sites.google.com/view/royalspend/home'));
 
       // Core Guarantees & Play Store Compliance
       expect(content, contains('Financial Services Clarification'));
@@ -91,6 +92,7 @@ void main() {
       expect(content, contains('Royal Shubham Pixel Labs'));
       expect(content, contains('royalshubhampixellabs@gmail.com'));
       expect(content, isNot(contains('https://sites.google.com/view/royal-pixels-privacy/home')));
+      expect(content, contains('https://sites.google.com/view/royalspend/home'));
     });
   });
 
@@ -164,11 +166,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Scroll to reveal Legal & Privacy
+      // Scroll down to reveal Legal & Privacy and About sections
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
+      await tester.pumpAndSettle();
+
       final privacyFinder = find.text('Privacy Policy');
-      await tester.scrollUntilVisible(privacyFinder, 200);
-      expect(privacyFinder, findsOneWidget);
+      expect(privacyFinder, findsWidgets);
       expect(find.text('LEGAL & PRIVACY'), findsOneWidget);
+      expect(find.text('https://sites.google.com/view/royalspend/home'), findsWidgets);
     });
   });
 }
