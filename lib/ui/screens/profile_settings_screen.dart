@@ -356,6 +356,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                 'ABOUT',
                 style: AppTextStyles.labelUppercase.copyWith(
                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  letterSpacing: 0.6,
                 ),
               ),
             ),
@@ -365,39 +366,88 @@ class ProfileSettingsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: GlassCard(
                 isDark: isDark,
-                padding: const EdgeInsets.all(20),
+                borderRadius: 24,
+                borderColor: AppColors.royalGold.withValues(alpha: isDark ? 0.22 : 0.18),
+                padding: const EdgeInsets.all(22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 58,
+                          height: 58,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            gradient: AppColors.royalGradient,
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.royalGold.withValues(alpha: isDark ? 0.24 : 0.16),
+                                isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: AppColors.royalGold.withValues(alpha: 0.5),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.royalGold.withValues(alpha: isDark ? 0.25 : 0.14),
+                                blurRadius: 14,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                          child: const Center(
-                            child: Icon(CupertinoIcons.shield_lefthalf_fill, color: Colors.white, size: 26),
+                          padding: const EdgeInsets.all(8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.asset(
+                              AppConstants.appLogoPath,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, error, stack) => const Icon(
+                                CupertinoIcons.shield_lefthalf_fill,
+                                color: AppColors.royalGold,
+                                size: 28,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppConstants.appName,
+                                'Royal Spend',
                                 style: AppTextStyles.titleMedium.copyWith(
                                   fontWeight: FontWeight.w800,
+                                  fontSize: 20,
+                                  letterSpacing: -0.3,
                                   color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                                 ),
                               ),
-                              Text(
-                                'v${AppConstants.appVersion} • Phase 1 Personal Edition',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.royalGold.withValues(alpha: isDark ? 0.16 : 0.10),
+                                  border: Border.all(
+                                    color: AppColors.royalGold.withValues(alpha: 0.38),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'v1.0.0 Personal Finance Edition',
+                                  style: TextStyle(
+                                    color: AppColors.royalGold,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
+                                  ),
                                 ),
                               ),
                             ],
@@ -405,13 +455,63 @@ class ProfileSettingsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Crafted with precision by ${AppConstants.brandName}. Designed to offer a fluid, iOS-inspired glassmorphic financial experience with zero tracking and full offline SQLite local persistence.',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                        height: 1.45,
+                    Container(
+                      height: 0.8,
+                      margin: const EdgeInsets.symmetric(vertical: 18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            isDark ? AppColors.royalGold.withValues(alpha: 0.3) : AppColors.royalGold.withValues(alpha: 0.4),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
+                    ),
+                    Text(
+                      'Take control of your money and make every journey count. Royal Spend brings together smart expense tracking, effortless travel planning and transparent expense management in one beautifully crafted experience.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.55,
+                        letterSpacing: -0.1,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Designed with privacy, simplicity and performance at its core, your financial records stay securely stored on your device with offline-first functionality.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.55,
+                        letterSpacing: -0.1,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      margin: const EdgeInsets.only(top: 18, bottom: 14),
+                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.sparkles,
+                          size: 14,
+                          color: AppColors.royalGold,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Crafted with precision by Royal Shubham Pixel Labs.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

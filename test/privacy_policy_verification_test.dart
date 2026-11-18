@@ -175,6 +175,22 @@ void main() {
       expect(find.text('LEGAL & PRIVACY'), findsOneWidget);
       // Verify raw URL is NOT shown in front of the user
       expect(find.text('https://sites.google.com/view/royalspend/home'), findsNothing);
+
+      // Verify redesigned About section
+      expect(find.text('ABOUT'), findsOneWidget);
+      expect(find.text('v1.0.0 Personal Finance Edition'), findsOneWidget);
+      expect(
+        find.textContaining('Take control of your money and make every journey count.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Designed with privacy, simplicity and performance at its core'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Crafted with precision by Royal Shubham Pixel Labs.'),
+        findsOneWidget,
+      );
     });
   });
 }
