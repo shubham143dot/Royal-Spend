@@ -174,15 +174,10 @@ class AppLockProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (!_isAppLockEnabled) return;
 
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      // App entered background: lock immediately to prevent app switcher preview leaks
+      // Intentionally do NOT lock when the app enters background or task switcher.
+      // Authentication is required ONLY on cold launch or relaunch of the application.
       _backgroundedAt = DateTime.now();
-      _isLocked = true;
-      notifyListeners();
     } else if (state == AppLifecycleState.resumed) {
-      // App returned to foreground: enforce lock and prompt authentication
-      if (_isLocked && !_isAuthenticating) {
-        unlockApp();
-      }
       _backgroundedAt = null;
     }
   }

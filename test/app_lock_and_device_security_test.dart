@@ -347,7 +347,7 @@ void main() {
       expect(provider.isLocked, isTrue);
     });
 
-    test('Lifecycle changes: backgrounding (paused/hidden) locks app immediately', () async {
+    test('Lifecycle changes: backgrounding (paused/hidden) does NOT lock the app (locks only on launch/relaunch)', () async {
       SharedPreferences.setMockInitialValues({
         AppConstants.keyAppLockEnabled: true,
       });
@@ -360,18 +360,19 @@ void main() {
       await provider.unlockApp();
       expect(provider.isLocked, isFalse);
 
-      // App backgrounded (paused)
+      // App backgrounded (paused): should NOT lock the app
       provider.didChangeAppLifecycleState(AppLifecycleState.paused);
-      expect(provider.isLocked, isTrue);
+      expect(provider.isLocked, isFalse);
       expect(provider.backgroundedAt, isNotNull);
 
-      // Unlock again
-      await provider.unlockApp();
+      // App resumed: should remain unlocked without prompting auth
+      provider.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(provider.isLocked, isFalse);
+      expect(provider.backgroundedAt, isNull);
 
-      // App hidden in task switcher
+      // App hidden in task switcher: should NOT lock the app
       provider.didChangeAppLifecycleState(AppLifecycleState.hidden);
-      expect(provider.isLocked, isTrue);
+      expect(provider.isLocked, isFalse);
     });
 
     test('Lifecycle changes: backgrounding does nothing when App Lock is disabled', () async {
