@@ -54,6 +54,16 @@
             <data android:scheme="geo" />
         </intent>
         <package android:name="com.google.android.apps.maps" />
+        <!-- Required for Gmail and email client redirection -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mailto" />
+        </intent>
+        <package android:name="com.google.android.gm" />
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
