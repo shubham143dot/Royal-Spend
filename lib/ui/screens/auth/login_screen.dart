@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -720,72 +719,23 @@ class _LoginScreenState extends State<LoginScreen>
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                     ),
-                                    child: Column(
-                                      children: [
-                                        LiquidPop(
-                                          pressedScale: 0.97,
-                                          onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 6,
+                                    child: GestureDetector(
+                                      onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
+                                      child: const Text(
+                                        'By continuing, you agree to our Terms of Service & Privacy Policy.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: LiquidAuthColors.textMuted,
+                                          fontSize: 11,
+                                          height: 1.45,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black,
+                                              blurRadius: 8,
                                             ),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(18),
-                                              color: Colors.black.withValues(alpha: 0.35),
-                                              border: Border.all(
-                                                color: LiquidAuthColors.specularRim.withValues(alpha: 0.35),
-                                                width: 0.9,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  CupertinoIcons.shield_lefthalf_fill,
-                                                  size: 13,
-                                                  color: LiquidAuthColors.softSilver,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                const Text(
-                                                  'Privacy Policy',
-                                                  style: TextStyle(
-                                                    color: LiquidAuthColors.softSilver,
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    letterSpacing: 0.2,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Icon(
-                                                  CupertinoIcons.arrow_up_right,
-                                                  size: 11,
-                                                  color: LiquidAuthColors.softSilver.withValues(alpha: 0.8),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 8),
-                                        GestureDetector(
-                                          onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
-                                          child: const Text(
-                                            'By continuing, you agree to our Terms of Service & Privacy Policy.',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: LiquidAuthColors.textMuted,
-                                              fontSize: 10.5,
-                                              height: 1.4,
-                                              shadows: [
-                                                Shadow(
-                                                  color: Colors.black,
-                                                  blurRadius: 8,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),

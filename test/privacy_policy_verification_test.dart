@@ -171,9 +171,10 @@ void main() {
       await tester.pumpAndSettle();
 
       final privacyFinder = find.text('Privacy Policy');
-      expect(privacyFinder, findsWidgets);
+      expect(privacyFinder, findsOneWidget);
       expect(find.text('LEGAL & PRIVACY'), findsOneWidget);
-      expect(find.text('https://sites.google.com/view/royalspend/home'), findsWidgets);
+      // Verify raw URL is NOT shown in front of the user
+      expect(find.text('https://sites.google.com/view/royalspend/home'), findsNothing);
     });
   });
 }

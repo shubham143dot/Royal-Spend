@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/privacy_launcher.dart';
@@ -221,14 +220,10 @@ class PrivacyPolicySheet extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    AppConstants.privacyPolicyUrl,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    'Tap to read the full policy online',
                                     style: TextStyle(
                                       fontSize: 11.5,
-                                      color: AppColors.royalGold,
-                                      decoration: TextDecoration.underline,
-                                      decorationColor: AppColors.royalGold.withValues(alpha: 0.5),
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                     ),
                                   ),
                                 ],

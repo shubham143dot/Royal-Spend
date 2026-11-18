@@ -334,7 +334,6 @@ class ProfileSettingsScreen extends StatelessWidget {
                       icon: CupertinoIcons.shield_lefthalf_fill,
                       iconColor: AppColors.royalGold,
                       title: 'Privacy Policy',
-                      subtitle: AppConstants.privacyPolicyUrl,
                       trailingWidget: const Icon(
                         CupertinoIcons.arrow_up_right,
                         size: 15,
@@ -412,99 +411,6 @@ class ProfileSettingsScreen extends StatelessWidget {
                       style: AppTextStyles.bodySmall.copyWith(
                         color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                         height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Direct Opening Link in About Section
-                    LiquidPop(
-                      pressedScale: 0.98,
-                      onTap: () => PrivacyLauncher.openPrivacyPolicy(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(13),
-                          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-                          border: Border.all(
-                            color: AppColors.royalGold.withValues(alpha: 0.35),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(9),
-                                gradient: AppColors.royalGradient,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  CupertinoIcons.globe,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    spacing: 6,
-                                    runSpacing: 2,
-                                    children: [
-                                      Text(
-                                        'Privacy Policy',
-                                        style: AppTextStyles.bodyMedium.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(6),
-                                          color: AppColors.royalGold.withValues(alpha: 0.16),
-                                        ),
-                                        child: const Text(
-                                          'WEB',
-                                          style: TextStyle(
-                                            color: AppColors.royalGold,
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    AppConstants.privacyPolicyUrl,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.royalGold,
-                                      decoration: TextDecoration.underline,
-                                      decorationColor: AppColors.royalGold.withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              CupertinoIcons.arrow_up_right,
-                              size: 16,
-                              color: AppColors.royalGold,
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ],
