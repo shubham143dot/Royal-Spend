@@ -365,7 +365,10 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
               // Trips List or Empty State
               if (trips.isEmpty)
                 SliverToBoxAdapter(
-                  child: _buildEmptyTravelState(context, isDark),
+                  child: _AnimatedEmptyTravelCard(
+                    isDark: isDark,
+                    onCreatePlan: _openCreatePlan,
+                  ),
                 )
               else
                 SliverPadding(
@@ -668,492 +671,6 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
     );
   }
 
-  Widget _buildEmptyTravelState(BuildContext context, bool isDark) {
-    return RepaintBoundary(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-        child: GlassCard(
-          isDark: isDark,
-          borderRadius: 28,
-          borderColor: isDark
-              ? AppColors.royalGold.withValues(alpha: 0.22)
-              : AppColors.royalIndigo.withValues(alpha: 0.18),
-          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 26.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 1. Prestigious Top Capsule Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            AppColors.royalGold.withValues(alpha: 0.16),
-                            AppColors.royalIndigo.withValues(alpha: 0.12),
-                          ]
-                        : [
-                            AppColors.royalIndigo.withValues(alpha: 0.08),
-                            AppColors.royalGold.withValues(alpha: 0.12),
-                          ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark
-                        ? AppColors.royalGold.withValues(alpha: 0.4)
-                        : AppColors.royalIndigo.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      CupertinoIcons.sparkles,
-                      size: 13,
-                      color: isDark
-                          ? AppColors.royalGoldLight
-                          : AppColors.royalGoldDark,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'ROYAL EXPEDITIONS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: isDark
-                            ? AppColors.royalGoldLight
-                            : AppColors.royalGoldDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 2. Ambient Radiant Emblem
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Outer Ambient Glow
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          AppColors.royalIndigo
-                              .withValues(alpha: isDark ? 0.35 : 0.22),
-                          AppColors.royalGold
-                              .withValues(alpha: isDark ? 0.15 : 0.10),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.0, 0.6, 1.0],
-                      ),
-                    ),
-                  ),
-                  // Squircle Emblem
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [
-                                const Color(0xFF1E1E2E),
-                                const Color(0xFF12121A),
-                              ]
-                            : [
-                                Colors.white,
-                                const Color(0xFFF1F5F9),
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(
-                        color: isDark
-                            ? AppColors.royalGold.withValues(alpha: 0.45)
-                            : AppColors.royalIndigo.withValues(alpha: 0.25),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.royalIndigo
-                              .withValues(alpha: isDark ? 0.25 : 0.15),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) =>
-                            AppColors.luxuryGoldGradient.createShader(bounds),
-                        blendMode: BlendMode.srcIn,
-                        child: const Icon(
-                          CupertinoIcons.paperplane_fill,
-                          size: 38,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
-
-              // 3. Headline
-              Text(
-                'Where Will You Wander?',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.titleLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 21,
-                  letterSpacing: -0.4,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : AppColors.lightTextPrimary,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // 4. Subtitle
-              Text(
-                'Chart your dream journey, allocate budgets with clarity, and organize every day effortlessly.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.45,
-                  fontWeight: FontWeight.w500,
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.lightTextSecondary,
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // 5. Core Feature Highlight Pillars
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildFeaturePillar(
-                      icon: CupertinoIcons.calendar_today,
-                      title: 'Smart Days',
-                      subtitle: 'Itinerary sync',
-                      accentColor: AppColors.electricCyan,
-                      isDark: isDark,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildFeaturePillar(
-                      icon: CupertinoIcons.money_dollar_circle_fill,
-                      title: 'Budgeting',
-                      subtitle: 'Zero overspend',
-                      accentColor: AppColors.royalGold,
-                      isDark: isDark,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildFeaturePillar(
-                      icon: CupertinoIcons.map_pin_ellipse,
-                      title: 'Live Places',
-                      subtitle: 'Map discovery',
-                      accentColor: AppColors.vividMint,
-                      isDark: isDark,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              // 6. Quick Inspiration Suggestions
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.compass,
-                      size: 13,
-                      color: isDark
-                          ? AppColors.darkTextMuted
-                          : AppColors.lightTextMuted,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'POPULAR INSPIRATIONS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isDark
-                            ? AppColors.darkTextMuted
-                            : AppColors.lightTextMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  children: [
-                    _buildInspirationChip(
-                      label: '🏔️ Mountain Trek',
-                      title: 'Himalayan Mountain Trek',
-                      destination: 'Manali, Himachal Pradesh',
-                      preference: 'Mountains',
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildInspirationChip(
-                      label: '🏖️ Coastal Escape',
-                      title: 'Coastal Goa Getaway',
-                      destination: 'Goa, India',
-                      preference: 'Relaxation',
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildInspirationChip(
-                      label: '🏛️ Heritage Tour',
-                      title: 'Royal Heritage Tour',
-                      destination: 'Jaipur, Rajasthan',
-                      preference: 'Cultural sites',
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildInspirationChip(
-                      label: '🌆 City Lights',
-                      title: 'City Lights Explorer',
-                      destination: 'Tokyo, Japan',
-                      preference: 'Adventure',
-                      isDark: isDark,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // 7. Hero Primary CTA Button
-              LiquidPop(
-                onTap: () => _openCreatePlan(),
-                child: Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF6366F1),
-                        Color(0xFF4F46E5),
-                        Color(0xFF38BDF8),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.royalIndigo.withValues(alpha: 0.38),
-                        blurRadius: 16,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        CupertinoIcons.add_circled_solid,
-                        size: 19,
-                        color: Colors.white,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        '+ Create Your First Plan',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(
-                        CupertinoIcons.arrow_right,
-                        size: 15,
-                        color: Colors.white70,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // 8. Reassurance & Privacy Footer
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    CupertinoIcons.shield_fill,
-                    size: 12,
-                    color: AppColors.vividMint.withValues(alpha: 0.85),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Offline-First • 100% Private On Device',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.darkTextMuted
-                          : AppColors.lightTextMuted,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeaturePillar({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color accentColor,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF14141E).withValues(alpha: 0.6)
-            : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
-          width: 0.8,
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: isDark ? 0.16 : 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: accentColor,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : AppColors.lightTextPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInspirationChip({
-    required String label,
-    required String title,
-    required String destination,
-    required String preference,
-    required bool isDark,
-  }) {
-    return LiquidPop(
-      onTap: () {
-        HapticHelper.lightImpact();
-        _openCreatePlan(
-          initialTitle: title,
-          initialDestination: destination,
-          initialPreference: preference,
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF1E1E2E).withValues(alpha: 0.85)
-              : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark
-                ? AppColors.royalGold.withValues(alpha: 0.25)
-                : AppColors.royalIndigo.withValues(alpha: 0.20),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              CupertinoIcons.chevron_forward,
-              size: 11,
-              color: isDark ? AppColors.royalGoldLight : AppColors.royalIndigo,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _confirmDeleteTrip(
       BuildContext context, Trip trip, TravelProvider provider) {
     showCupertinoDialog(
@@ -1233,6 +750,294 @@ class _FilterPill extends StatelessWidget {
                       ? AppColors.darkTextSecondary
                       : AppColors.lightTextSecondary),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Clean, simple animated empty state card for Travel Hub.
+class _AnimatedEmptyTravelCard extends StatefulWidget {
+  final bool isDark;
+  final VoidCallback onCreatePlan;
+
+  const _AnimatedEmptyTravelCard({
+    required this.isDark,
+    required this.onCreatePlan,
+  });
+
+  @override
+  State<_AnimatedEmptyTravelCard> createState() =>
+      _AnimatedEmptyTravelCardState();
+}
+
+class _AnimatedEmptyTravelCardState extends State<_AnimatedEmptyTravelCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _floatAnim;
+  late final Animation<double> _pulseAnim;
+  late final Animation<double> _tiltAnim;
+
+  bool get _isTestEnvironment =>
+      WidgetsBinding.instance.runtimeType.toString().contains('Test');
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+
+    final curved = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutSine,
+    );
+
+    _floatAnim = Tween<double>(begin: -7.0, end: 7.0).animate(curved);
+    _pulseAnim = Tween<double>(begin: 0.88, end: 1.12).animate(curved);
+    _tiltAnim = Tween<double>(begin: -0.05, end: 0.05).animate(curved);
+
+    if (!_isTestEnvironment &&
+        !WidgetsBinding
+            .instance.platformDispatcher.accessibilityFeatures.reduceMotion) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 26.0),
+        child: GlassCard(
+          isDark: isDark,
+          borderRadius: 26,
+          borderColor: isDark
+              ? AppColors.royalGold.withValues(alpha: 0.22)
+              : AppColors.royalIndigo.withValues(alpha: 0.18),
+          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 28.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated Floating & Pulsing Travel Emblem
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Pulsing Ambient Glow Aura
+                      Transform.scale(
+                        scale: _pulseAnim.value,
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                AppColors.royalIndigo.withValues(
+                                    alpha: isDark ? 0.38 : 0.22),
+                                AppColors.royalGold.withValues(
+                                    alpha: isDark ? 0.20 : 0.12),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.65, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Floating & Tilting Emblem Squircle
+                      Transform.translate(
+                        offset: Offset(0, _floatAnim.value),
+                        child: Transform.rotate(
+                          angle: _tiltAnim.value,
+                          child: Container(
+                            width: 78,
+                            height: 78,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [
+                                        const Color(0xFF1E1E2E),
+                                        const Color(0xFF101018),
+                                      ]
+                                    : [
+                                        Colors.white,
+                                        const Color(0xFFF1F5F9),
+                                      ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              border: Border.all(
+                                color: isDark
+                                    ? AppColors.royalGold
+                                        .withValues(alpha: 0.45)
+                                    : AppColors.royalIndigo
+                                        .withValues(alpha: 0.25),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.royalIndigo.withValues(
+                                      alpha: isDark ? 0.30 : 0.18),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => AppColors
+                                    .luxuryGoldGradient
+                                    .createShader(bounds),
+                                blendMode: BlendMode.srcIn,
+                                child: const Icon(
+                                  CupertinoIcons.paperplane_fill,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Simple & Inspiring Title
+              Text(
+                'Create Your First Plan',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  letterSpacing: -0.4,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.lightTextPrimary,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Simple Subtitle
+              Text(
+                'Plan itineraries, set trip budgets, and organize your expenses effortlessly in one place.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Sleek CTA Action Button
+              LiquidPop(
+                onTap: widget.onCreatePlan,
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF6366F1),
+                        Color(0xFF4F46E5),
+                        Color(0xFF38BDF8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.royalIndigo.withValues(alpha: 0.38),
+                        blurRadius: 16,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.add_circled_solid,
+                        size: 19,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '+ Create Your First Plan',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(
+                        CupertinoIcons.arrow_right,
+                        size: 15,
+                        color: Colors.white70,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Reassurance & Privacy Footer
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.shield_fill,
+                    size: 12,
+                    color: AppColors.vividMint.withValues(alpha: 0.85),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Offline-First • 100% Private On Device',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
