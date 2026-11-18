@@ -67,9 +67,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Royal Spend uses the camera to scan and recognize receipt expenses offline.</string>
+	<string>Royal Spend uses the camera to capture a profile picture.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Royal Spend accesses your photo library to select receipt images for offline OCR.</string>
+	<string>Royal Spend accesses your photo library to select a custom profile avatar.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Royal Spend uses Face ID to securely authenticate and protect your expenses and travel records.</string>
 </dict>

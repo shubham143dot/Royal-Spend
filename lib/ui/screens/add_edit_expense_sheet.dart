@@ -224,7 +224,6 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
         syncStatus: isEditing ? widget.expenseToEdit!.syncStatus : syncStatus,
         receiptPath: widget.expenseToEdit?.receiptPath,
         cloudImageUrl: widget.expenseToEdit?.cloudImageUrl,
-        ocrData: widget.expenseToEdit?.ocrData,
       );
 
       if (isEditing) {

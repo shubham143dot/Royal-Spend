@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import '../../core/constants/default_categories.dart';
 import 'expense_category.dart';
@@ -90,9 +89,6 @@ class Expense {
   /// Cloud Storage URL after synchronization.
   final String? cloudImageUrl;
 
-  /// Extracted on-device OCR metadata (subtotal, GST breakdown, invoice number, etc.).
-  final Map<String, dynamic>? ocrData;
-
   Expense({
     required this.id,
     required this.title,
@@ -109,7 +105,6 @@ class Expense {
     this.syncStatus = ExpenseSyncStatus.synced,
     this.receiptPath,
     this.cloudImageUrl,
-    this.ocrData,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -131,7 +126,6 @@ class Expense {
     ExpenseSyncStatus? syncStatus,
     String? receiptPath,
     String? cloudImageUrl,
-    Map<String, dynamic>? ocrData,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -149,7 +143,6 @@ class Expense {
       syncStatus: syncStatus ?? this.syncStatus,
       receiptPath: receiptPath ?? this.receiptPath,
       cloudImageUrl: cloudImageUrl ?? this.cloudImageUrl,
-      ocrData: ocrData ?? this.ocrData,
     );
   }
 
@@ -170,7 +163,6 @@ class Expense {
       'sync_status': syncStatus.name,
       'receipt_path': receiptPath,
       'cloud_image_url': cloudImageUrl,
-      'ocr_data': ocrData != null ? jsonEncode(ocrData) : null,
     };
   }
 
@@ -196,19 +188,6 @@ class Expense {
       return false;
     }
 
-    Map<String, dynamic>? parseOcrData(dynamic val) {
-      if (val == null) return null;
-      if (val is Map<String, dynamic>) return val;
-      if (val is Map) return Map<String, dynamic>.from(val);
-      if (val is String && val.trim().isNotEmpty) {
-        try {
-          final decoded = jsonDecode(val);
-          if (decoded is Map) return Map<String, dynamic>.from(decoded);
-        } catch (_) {}
-      }
-      return null;
-    }
-
     return Expense(
       id: map['id']?.toString() ?? '',
       title: map['title']?.toString() ?? 'Expense',
@@ -231,7 +210,6 @@ class Expense {
       ),
       receiptPath: map['receipt_path'] as String?,
       cloudImageUrl: map['cloud_image_url'] as String?,
-      ocrData: parseOcrData(map['ocr_data']),
     );
   }
 }

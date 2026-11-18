@@ -16,7 +16,6 @@ import '../models/travel_checklist_item.dart';
 import '../models/travel_split.dart';
 import '../models/travel_transport.dart';
 import '../models/trip.dart';
-import '../../core/services/ocr/receipt_storage_service.dart';
 
 class DatabaseHelper {
   static const String _databaseName = 'royal_spend.db';
@@ -89,9 +88,6 @@ class DatabaseHelper {
       }
       if (!expenseColumns.any((col) => col['name'] == 'cloud_image_url')) {
         await db.execute('ALTER TABLE expenses ADD COLUMN cloud_image_url TEXT;');
-      }
-      if (!expenseColumns.any((col) => col['name'] == 'ocr_data')) {
-        await db.execute('ALTER TABLE expenses ADD COLUMN ocr_data TEXT;');
       }
 
       // Ensure all travel tables exist
@@ -214,8 +210,7 @@ class DatabaseHelper {
         user_id TEXT,
         sync_status TEXT NOT NULL DEFAULT 'synced',
         receipt_path TEXT,
-        cloud_image_url TEXT,
-        ocr_data TEXT
+        cloud_image_url TEXT
       )
     ''');
 
@@ -559,7 +554,12 @@ class DatabaseHelper {
       if (rows.isNotEmpty) {
         final path = rows.first['receipt_path'] as String?;
         if (path != null && path.isNotEmpty) {
-          await ReceiptStorageService.instance.deleteReceipt(path);
+          try {
+            final file = File(path);
+            if (await file.exists()) {
+              await file.delete();
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {}

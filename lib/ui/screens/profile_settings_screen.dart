@@ -334,7 +334,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                       icon: CupertinoIcons.shield_lefthalf_fill,
                       iconColor: AppColors.royalGold,
                       title: 'Privacy Policy',
-                      subtitle: 'Zero data sales • On-device OCR • Encrypted sync',
+                      subtitle: 'Zero data sales • Local privacy • Encrypted sync',
                       trailingText: 'Legal',
                       isDark: isDark,
                       onTap: () => PrivacyPolicySheet.show(context, isDark: isDark),
