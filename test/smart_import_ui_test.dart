@@ -10,7 +10,7 @@ import 'package:royal_spend/providers/expense_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/ui/screens/add_edit_expense_sheet.dart';
 
-class _FakeExpenseRepo implements IExpenseRepository {
+class _FakeExpenseRepo extends IExpenseRepository {
   final List<Expense> _expenses = [];
 
   @override
@@ -37,7 +37,7 @@ class _FakeExpenseRepo implements IExpenseRepository {
 }
 
 void main() {
-  testWidgets('AddEditExpenseSheet renders Manual Entry and Smart Import modes', (tester) async {
+  testWidgets('AddEditExpenseSheet renders direct manual entry with NO Smart Import feature', (tester) async {
     final settingsRepo = SettingsRepository();
     final settingsProvider = SettingsProvider(repository: settingsRepo);
     final expenseRepo = _FakeExpenseRepo();
@@ -60,33 +60,26 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Verify Title and Tabs
+    // Verify Title is Record Expense
     expect(find.text('Record Expense'), findsOneWidget);
-    expect(find.text('Manual Entry'), findsOneWidget);
-    expect(find.text('Smart Import'), findsOneWidget);
 
-    // Initial default is Manual Entry
+    // Verify Smart Import and Mode Switchers are completely removed
+    expect(find.text('Smart Import'), findsNothing);
+    expect(find.text('Manual Entry'), findsNothing);
+    expect(find.text('Upload Image'), findsNothing);
+    expect(find.text('Take Photo'), findsNothing);
+    expect(find.text('100% On-Device & Private'), findsNothing);
+
+    // Manual entry fields must be immediately visible
     expect(find.text('EXPENSE AMOUNT'), findsOneWidget);
     expect(find.text('TITLE / MERCHANT'), findsOneWidget);
-
-    // Switch to Smart Import
-    await tester.tap(find.text('Smart Import'));
-    await tester.pumpAndSettle();
-
-    // Verify Smart Import options: Upload Image and Take Photo
-    expect(find.text('Upload Image'), findsOneWidget);
-    expect(find.text('Take Photo'), findsOneWidget);
-    expect(find.text('100% On-Device & Private'), findsOneWidget);
-
-    // Switch back to Manual Entry
-    await tester.tap(find.text('Manual Entry'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('EXPENSE AMOUNT'), findsOneWidget);
-    expect(find.text('TITLE / MERCHANT'), findsOneWidget);
+    expect(find.text('CATEGORY'), findsOneWidget);
+    expect(find.text('DATE & TIME'), findsOneWidget);
+    expect(find.text('PAYMENT METHOD'), findsOneWidget);
+    expect(find.text('Save Expense'), findsOneWidget);
   });
 
-  testWidgets('Editing an existing expense directly shows Edit Expense without mode switch', (tester) async {
+  testWidgets('Editing an existing expense shows Edit Expense without any Smart Import controls', (tester) async {
     final settingsRepo = SettingsRepository();
     final settingsProvider = SettingsProvider(repository: settingsRepo);
     final expenseRepo = _FakeExpenseRepo();
@@ -121,7 +114,7 @@ void main() {
 
     expect(find.text('Edit Expense'), findsOneWidget);
     expect(find.text('Update Expense'), findsOneWidget);
-    // Mode switcher should not be visible when editing existing
     expect(find.text('Smart Import'), findsNothing);
+    expect(find.text('Manual Entry'), findsNothing);
   });
 }

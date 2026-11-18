@@ -26,7 +26,7 @@ import 'package:royal_spend/ui/widgets/travel/add_edit_day_sheet.dart';
 
 import 'travel_multi_plan_isolation_test.dart';
 
-class _FakeExpenseRepo implements IExpenseRepository {
+class _FakeExpenseRepo extends IExpenseRepository {
   final List<Expense> _expenses = [];
 
   @override
@@ -357,6 +357,10 @@ void main() {
     // 27. Cross-Screen Visual Comparison & 28. Runtime Error Testing
     testWidgets('27 & 28. DashboardScreen renders zero exceptions on initial load',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(_buildTestApp(
         child: DashboardScreen(onNavigateToHistory: () {}),
         isDark: true,

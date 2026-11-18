@@ -26,11 +26,13 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  final Set<int> _loadedTabs = {0};
 
   void _onTabSelected(int index) {
     if (index == _currentIndex) return;
     setState(() {
       _currentIndex = index;
+      _loadedTabs.add(index);
     });
   }
 
@@ -44,18 +46,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         key: const PageStorageKey('dashboard_screen'),
         onNavigateToHistory: () => _onTabSelected(1),
       ),
-      const TransactionsScreen(
-        key: PageStorageKey('transactions_screen'),
-      ),
-      const TravelDashboardScreen(
-        key: PageStorageKey('travel_dashboard_screen'),
-      ),
-      const AnalyticsScreen(
-        key: PageStorageKey('analytics_screen'),
-      ),
-      const ProfileSettingsScreen(
-        key: PageStorageKey('profile_settings_screen'),
-      ),
+      _loadedTabs.contains(1)
+          ? const TransactionsScreen(
+              key: PageStorageKey('transactions_screen'),
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(2)
+          ? const TravelDashboardScreen(
+              key: PageStorageKey('travel_dashboard_screen'),
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(3)
+          ? const AnalyticsScreen(
+              key: PageStorageKey('analytics_screen'),
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(4)
+          ? const ProfileSettingsScreen(
+              key: PageStorageKey('profile_settings_screen'),
+            )
+          : const SizedBox.shrink(),
     ];
 
     return Scaffold(
@@ -74,10 +84,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ? LiquidAddTravelExpenseFab(isDark: isDark)
               : null),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: GlassFloatingNavBar(
-        currentIndex: _currentIndex,
-        isDark: isDark,
-        onTabSelected: _onTabSelected,
+      bottomNavigationBar: RepaintBoundary(
+        child: GlassFloatingNavBar(
+          currentIndex: _currentIndex,
+          isDark: isDark,
+          onTabSelected: _onTabSelected,
+        ),
       ),
     );
   }

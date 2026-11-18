@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/constants/app_constants.dart';
 import '../data/models/expense.dart';
 import '../data/models/itinerary_activity.dart';
 import '../data/models/itinerary_day.dart';
@@ -25,8 +26,23 @@ class TravelProvider extends ChangeNotifier {
   bool _isWorkspaceLoading = false;
   bool get isWorkspaceLoading => _isWorkspaceLoading;
 
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
+
+  void setAdminStatus(bool isAdmin) {
+    if (_isAdmin != isAdmin) {
+      _isAdmin = isAdmin;
+      notifyListeners();
+    }
+  }
+
   List<Trip> _trips = [];
-  List<Trip> get trips => List.unmodifiable(_trips);
+  List<Trip> get trips {
+    if (_isAdmin) return List.unmodifiable(_trips);
+    return List.unmodifiable(
+      _trips.where((t) => !AppConstants.isBackToLifeTrip(t.title, t.destination)).toList(),
+    );
+  }
 
   // Active workspace state (Strictly scoped to the currently selected trip)
   Trip? _selectedTrip;
@@ -90,9 +106,26 @@ class TravelProvider extends ChangeNotifier {
 
   Future<void> initialize() => init();
 
+  bool _isLoadingTrips = false;
+
   Future<void> loadTrips() async {
-    _trips = await _repository.getAllTrips();
-    notifyListeners();
+    if (_isLoadingTrips) return;
+    _isLoadingTrips = true;
+    try {
+      var loadedTrips = await _repository.getAllTrips();
+      if (!_isAdmin) {
+        // Auto-purge any "Back to Life" trip from non-admin local storage & cloud
+        final restricted = loadedTrips.where((t) => AppConstants.isBackToLifeTrip(t.title, t.destination)).toList();
+        for (final r in restricted) {
+          await _repository.deleteTrip(r.id, deleteExpenses: true);
+        }
+        loadedTrips = loadedTrips.where((t) => !AppConstants.isBackToLifeTrip(t.title, t.destination)).toList();
+      }
+      _trips = loadedTrips;
+      notifyListeners();
+    } finally {
+      _isLoadingTrips = false;
+    }
   }
 
   Future<void> refresh() => loadTrips();
@@ -100,7 +133,8 @@ class TravelProvider extends ChangeNotifier {
   // --- Filtered Trips for Dashboard ---
 
   List<Trip> get filteredTrips {
-    return _trips.where((trip) {
+    final sourceTrips = trips;
+    return sourceTrips.where((trip) {
       if (_statusFilter != null && trip.status != _statusFilter) {
         return false;
       }
@@ -197,6 +231,9 @@ class TravelProvider extends ChangeNotifier {
     _currentSplits = await _repository.getSplitsForTrip(tripId);
     _currentLinkedExpenses = await _repository.getExpensesForTrip(tripId);
 
+    // Automatically synchronize all itinerary destinations into Saved Places
+    await _syncAllItineraryToSavedPlaces(tripId);
+
     _isWorkspaceLoading = false;
     notifyListeners();
   }
@@ -218,6 +255,23 @@ class TravelProvider extends ChangeNotifier {
     _currentChecklist = [];
     _currentSplits = [];
     _currentLinkedExpenses = [];
+    notifyListeners();
+  }
+
+  void clearAllDataInMemory() {
+    _trips = [];
+    _selectedTrip = null;
+    _currentDays = [];
+    _selectedDay = null;
+    _activitiesByDay = {};
+    _currentSavedPlaces = [];
+    _currentTransports = [];
+    _currentAccommodations = [];
+    _currentChecklist = [];
+    _currentSplits = [];
+    _currentLinkedExpenses = [];
+    _searchQuery = '';
+    _statusFilter = null;
     notifyListeners();
   }
 
@@ -295,6 +349,27 @@ class TravelProvider extends ChangeNotifier {
       _selectedTrip = updatedTrip;
     }
     await loadTrips();
+  }
+
+  Future<void> updateTripBudget(String tripId, double newBudget) async {
+    final trip = await _repository.getTrip(tripId);
+    if (trip != null) {
+      final updatedTrip = trip.copyWith(
+        budget: newBudget,
+        updatedAt: DateTime.now(),
+      );
+      await updateTrip(updatedTrip);
+    }
+  }
+
+  String? getTripTitle(String? tripId) {
+    if (tripId == null || tripId.isEmpty) return null;
+    try {
+      final trip = _trips.firstWhere((t) => t.id == tripId);
+      return trip.title;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> deleteTrip(String tripId, {bool deleteExpenses = false}) async {
@@ -426,18 +501,86 @@ class TravelProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
+      await _syncDayToSavedPlaces(day);
     }
+  }
+
+  Future<void> updateDayStartingPoint(
+    String dayId, {
+    required String placeName,
+    String? address,
+    String? time,
+    String? notes,
+    String? type,
+  }) async {
+    final idx = _currentDays.indexWhere((d) => d.id == dayId);
+    if (idx == -1) return;
+    final day = _currentDays[idx];
+    final updated = day.copyWith(
+      startPlaceName: placeName,
+      startAddress: address,
+      startTime: time,
+      startNotes: notes,
+      startType: type,
+    );
+    await updateDay(updated);
+  }
+
+  Future<void> clearDayStartingPoint(String dayId) async {
+    final idx = _currentDays.indexWhere((d) => d.id == dayId);
+    if (idx == -1) return;
+    final day = _currentDays[idx];
+    final updated = day.copyWith(
+      clearStartPlaceName: true,
+      clearStartAddress: true,
+      clearStartTime: true,
+      clearStartNotes: true,
+      clearStartType: true,
+    );
+    await updateDay(updated);
+  }
+
+  Future<void> updateDayEndPoint(
+    String dayId, {
+    required String placeName,
+    String? time,
+  }) async {
+    final idx = _currentDays.indexWhere((d) => d.id == dayId);
+    if (idx == -1) return;
+    final day = _currentDays[idx];
+    final updated = day.copyWith(
+      endPlaceName: placeName,
+      endTime: time,
+    );
+    await updateDay(updated);
+  }
+
+  Future<void> clearDayEndPoint(String dayId) async {
+    final idx = _currentDays.indexWhere((d) => d.id == dayId);
+    if (idx == -1) return;
+    final day = _currentDays[idx];
+    final updated = day.copyWith(
+      clearEndPlaceName: true,
+      clearEndTime: true,
+    );
+    await updateDay(updated);
   }
 
   Future<void> deleteDay(String dayId) async {
     await _repository.deleteDay(dayId);
     if (_selectedTrip != null) {
       _currentDays.removeWhere((d) => d.id == dayId);
+      final removedActivities = _activitiesByDay[dayId] ?? [];
       _activitiesByDay.remove(dayId);
       if (_selectedDay?.id == dayId) {
         _selectedDay = _currentDays.isNotEmpty ? _currentDays.first : null;
       }
       notifyListeners();
+
+      await _removeDayFromSavedPlaces(dayId);
+      for (final act in removedActivities) {
+        await _removeActivityFromSavedPlaces(act.id);
+      }
     }
   }
 
@@ -452,6 +595,8 @@ class TravelProvider extends ChangeNotifier {
       list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       _activitiesByDay[finalActivity.dayId] = list;
       notifyListeners();
+
+      await _syncActivityToSavedPlace(finalActivity);
     }
   }
 
@@ -465,6 +610,8 @@ class TravelProvider extends ChangeNotifier {
         list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
         _activitiesByDay[activity.dayId] = list;
         notifyListeners();
+
+        await _syncActivityToSavedPlace(activity);
       }
     }
   }
@@ -531,6 +678,8 @@ class TravelProvider extends ChangeNotifier {
       list.removeWhere((a) => a.id == activityId);
       _activitiesByDay[dayId] = list;
       notifyListeners();
+
+      await _removeActivityFromSavedPlaces(activityId);
     }
   }
 
@@ -608,6 +757,236 @@ class TravelProvider extends ChangeNotifier {
     await addActivity(act);
   }
 
+  // --- Automatic Itinerary <-> Saved Places Synchronization ---
+
+  String _mapActivityCategoryToSavedPlaceCategory(ActivityCategory cat) {
+    switch (cat) {
+      case ActivityCategory.sightseeing:
+      case ActivityCategory.custom:
+        return 'Tourist Attractions';
+      case ActivityCategory.meal:
+        return 'Restaurants';
+      case ActivityCategory.accommodation:
+        return 'Hotels';
+      case ActivityCategory.shopping:
+        return 'Shopping';
+      case ActivityCategory.rest:
+        return 'Cafes';
+      case ActivityCategory.transport:
+        return 'Transport';
+    }
+  }
+
+  Future<void> _syncActivityToSavedPlace(ItineraryActivity activity) async {
+    final name = (activity.placeName?.trim().isNotEmpty == true)
+        ? activity.placeName!.trim()
+        : activity.title.trim();
+    if (name.isEmpty) return;
+
+    final stableId = 'itinerary_act_${activity.id}';
+    final category = _mapActivityCategoryToSavedPlaceCategory(activity.category);
+    final dayIdx = _currentDays.indexWhere((d) => d.id == activity.dayId);
+    final dayNum = dayIdx != -1 ? _currentDays[dayIdx].dayNumber : 1;
+    final itineraryNote = 'Itinerary: Day $dayNum • ${activity.title}';
+
+    final existingIdx = _currentSavedPlaces.indexWhere((p) => p.id == stableId);
+
+    if (existingIdx != -1) {
+      final existing = _currentSavedPlaces[existingIdx];
+      final updated = existing.copyWith(
+        name: name,
+        address: activity.address ?? existing.address,
+        latitude: activity.latitude ?? existing.latitude,
+        longitude: activity.longitude ?? existing.longitude,
+        placeId: activity.placeId ?? existing.placeId,
+        category: category,
+        locationNotes: itineraryNote,
+      );
+      _currentSavedPlaces[existingIdx] = updated;
+      notifyListeners();
+      await _repository.updateSavedPlace(updated);
+    } else {
+      // Check if an identical place is already saved to avoid duplicates
+      final duplicateIdx = _currentSavedPlaces.indexWhere((p) =>
+          (activity.placeId != null &&
+              activity.placeId!.isNotEmpty &&
+              p.placeId == activity.placeId) ||
+          (activity.latitude != null &&
+              activity.longitude != null &&
+              p.latitude != null &&
+              p.longitude != null &&
+              (p.latitude! - activity.latitude!).abs() < 0.0001 &&
+              (p.longitude! - activity.longitude!).abs() < 0.0001 &&
+              p.name.toLowerCase() == name.toLowerCase()));
+
+      if (duplicateIdx != -1) {
+        final existing = _currentSavedPlaces[duplicateIdx];
+        final updated = existing.copyWith(
+          locationNotes: '${existing.locationNotes ?? ""}\n$itineraryNote'.trim(),
+        );
+        _currentSavedPlaces[duplicateIdx] = updated;
+        notifyListeners();
+        await _repository.updateSavedPlace(updated);
+        return;
+      }
+
+      final newPlace = SavedPlace(
+        id: stableId,
+        tripId: activity.tripId,
+        name: name,
+        address: activity.address,
+        latitude: activity.latitude,
+        longitude: activity.longitude,
+        placeId: activity.placeId,
+        category: category,
+        locationNotes: itineraryNote,
+      );
+      _currentSavedPlaces.add(newPlace);
+      notifyListeners();
+      await _repository.addSavedPlace(newPlace);
+    }
+  }
+
+  Future<void> _removeActivityFromSavedPlaces(String activityId) async {
+    final stableId = 'itinerary_act_$activityId';
+    final exists = _currentSavedPlaces.any((p) => p.id == stableId);
+    if (exists) {
+      _currentSavedPlaces.removeWhere((p) => p.id == stableId);
+      notifyListeners();
+      await _repository.deleteSavedPlace(stableId);
+    }
+  }
+
+  Future<void> _syncDayToSavedPlaces(ItineraryDay day) async {
+    // Starting Point
+    final startId = 'itinerary_start_${day.id}';
+    if (day.hasStartingPoint && day.hasStartingCoordinates) {
+      final startName = day.startPlaceName!.trim();
+      final note = 'Itinerary: Day ${day.dayNumber} Starting Point';
+      final startCategory = day.startType?.toLowerCase() == 'hotel'
+          ? 'Hotels'
+          : (day.startType?.toLowerCase() == 'station' || day.startType?.toLowerCase() == 'airport'
+              ? 'Transport'
+              : 'Sightseeing');
+
+      final idx = _currentSavedPlaces.indexWhere((p) => p.id == startId);
+      if (idx != -1) {
+        final existing = _currentSavedPlaces[idx];
+        final updated = existing.copyWith(
+          name: startName,
+          address: day.startAddress ?? existing.address,
+          latitude: day.startLatitude,
+          longitude: day.startLongitude,
+          placeId: day.startPlaceId ?? existing.placeId,
+          category: startCategory,
+          locationNotes: note,
+        );
+        _currentSavedPlaces[idx] = updated;
+        notifyListeners();
+        await _repository.updateSavedPlace(updated);
+      } else {
+        final newPlace = SavedPlace(
+          id: startId,
+          tripId: day.tripId,
+          name: startName,
+          address: day.startAddress,
+          latitude: day.startLatitude,
+          longitude: day.startLongitude,
+          placeId: day.startPlaceId,
+          category: startCategory,
+          locationNotes: note,
+        );
+        _currentSavedPlaces.add(newPlace);
+        notifyListeners();
+        await _repository.addSavedPlace(newPlace);
+      }
+    } else {
+      if (_currentSavedPlaces.any((p) => p.id == startId)) {
+        _currentSavedPlaces.removeWhere((p) => p.id == startId);
+        notifyListeners();
+        await _repository.deleteSavedPlace(startId);
+      }
+    }
+
+    // Ending Point
+    final endId = 'itinerary_end_${day.id}';
+    if (day.hasEndPoint && day.hasEndCoordinates) {
+      final endName = day.endPlaceName!.trim();
+      final note = 'Itinerary: Day ${day.dayNumber} Final Destination';
+      const endCategory = 'Sightseeing';
+
+      final idx = _currentSavedPlaces.indexWhere((p) => p.id == endId);
+      if (idx != -1) {
+        final existing = _currentSavedPlaces[idx];
+        final updated = existing.copyWith(
+          name: endName,
+          address: day.endAddress ?? existing.address,
+          latitude: day.endLatitude,
+          longitude: day.endLongitude,
+          placeId: day.endPlaceId ?? existing.placeId,
+          category: endCategory,
+          locationNotes: note,
+        );
+        _currentSavedPlaces[idx] = updated;
+        notifyListeners();
+        await _repository.updateSavedPlace(updated);
+      } else {
+        final newPlace = SavedPlace(
+          id: endId,
+          tripId: day.tripId,
+          name: endName,
+          address: day.endAddress,
+          latitude: day.endLatitude,
+          longitude: day.endLongitude,
+          placeId: day.endPlaceId,
+          category: endCategory,
+          locationNotes: note,
+        );
+        _currentSavedPlaces.add(newPlace);
+        notifyListeners();
+        await _repository.addSavedPlace(newPlace);
+      }
+    } else {
+      if (_currentSavedPlaces.any((p) => p.id == endId)) {
+        _currentSavedPlaces.removeWhere((p) => p.id == endId);
+        notifyListeners();
+        await _repository.deleteSavedPlace(endId);
+      }
+    }
+  }
+
+  Future<void> _removeDayFromSavedPlaces(String dayId) async {
+    final startId = 'itinerary_start_$dayId';
+    final endId = 'itinerary_end_$dayId';
+
+    bool changed = false;
+    if (_currentSavedPlaces.any((p) => p.id == startId)) {
+      _currentSavedPlaces.removeWhere((p) => p.id == startId);
+      await _repository.deleteSavedPlace(startId);
+      changed = true;
+    }
+    if (_currentSavedPlaces.any((p) => p.id == endId)) {
+      _currentSavedPlaces.removeWhere((p) => p.id == endId);
+      await _repository.deleteSavedPlace(endId);
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> _syncAllItineraryToSavedPlaces(String tripId) async {
+    for (final day in _currentDays) {
+      await _syncDayToSavedPlaces(day);
+      final activities = _activitiesByDay[day.id] ?? [];
+      for (final act in activities) {
+        if (act.latitude != null && act.longitude != null) {
+          await _syncActivityToSavedPlace(act);
+        }
+      }
+    }
+  }
+
   // --- Checklist Operations ---
 
   Future<void> addChecklistItem(TravelChecklistItem item) async {
@@ -648,6 +1027,17 @@ class TravelProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateTransport(TravelTransport transport) async {
+    await _repository.updateTransport(transport);
+    if (_selectedTrip != null && transport.tripId == _selectedTrip!.id) {
+      final idx = _currentTransports.indexWhere((t) => t.id == transport.id);
+      if (idx != -1) {
+        _currentTransports[idx] = transport;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> deleteTransport(String id) async {
     await _repository.deleteTransport(id);
     if (_selectedTrip != null) {
@@ -661,6 +1051,18 @@ class TravelProvider extends ChangeNotifier {
     if (_selectedTrip != null && accommodation.tripId == _selectedTrip!.id) {
       _currentAccommodations.add(accommodation);
       notifyListeners();
+    }
+  }
+
+  Future<void> updateAccommodation(TravelAccommodation accommodation) async {
+    await _repository.updateAccommodation(accommodation);
+    if (_selectedTrip != null && accommodation.tripId == _selectedTrip!.id) {
+      final idx =
+          _currentAccommodations.indexWhere((a) => a.id == accommodation.id);
+      if (idx != -1) {
+        _currentAccommodations[idx] = accommodation;
+        notifyListeners();
+      }
     }
   }
 
@@ -740,4 +1142,7 @@ class TravelProvider extends ChangeNotifier {
         await _repository.getExpensesForTrip(_selectedTrip!.id);
     notifyListeners();
   }
+
+  Future<List<Expense>> getExpensesForTrip(String tripId) =>
+      _repository.getExpensesForTrip(tripId);
 }

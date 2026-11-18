@@ -24,6 +24,13 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
+    // User receipt attachments path: receipts/{userId}/{fileName}
+    match /receipts/{userId}/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
     // Default deny for all other storage paths
     match /{allPaths=**} {
       allow read, write: if false;

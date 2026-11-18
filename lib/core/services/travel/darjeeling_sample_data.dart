@@ -80,12 +80,49 @@ Darjeeling Trip, 10 to 18 December 2026.
       if (dayNum == 3) title = 'Early Exploration (Unconfirmed)';
       if (dayNum > 3) title = 'Day $dayNum — Complete your itinerary';
 
+      String? startPlaceName;
+      String? startAddress;
+      double? startLat;
+      double? startLng;
+      String? endPlaceName;
+      String? endAddress;
+      double? endLat;
+      double? endLng;
+
+      if (dayNum == 2) {
+        startPlaceName = 'Tenzing Norgay Central Bus Terminus, Siliguri';
+        startAddress = 'Pradhan Nagar, Siliguri, West Bengal';
+        startLat = 26.7271;
+        startLng = 88.3953;
+        endPlaceName = 'Live In Nature Homestay, Darjeeling';
+        endAddress = 'Near Mall Road, Darjeeling, West Bengal';
+        endLat = 27.0420;
+        endLng = 88.2610;
+      } else if (dayNum == 3) {
+        startPlaceName = 'Darjeeling Railway Station';
+        startAddress = 'Hill Cart Rd, Limbugaon, Darjeeling, West Bengal';
+        startLat = 27.0357;
+        startLng = 88.2642;
+        endPlaceName = 'Darjeeling Mall';
+        endAddress = 'Chauk Bazaar, Darjeeling, West Bengal';
+        endLat = 27.0435;
+        endLng = 88.2685;
+      }
+
       days.add(ItineraryDay(
         id: '${tripId}_day_$dayNum',
         tripId: tripId,
         dayNumber: dayNum,
         date: dayDate,
         title: title,
+        startPlaceName: startPlaceName,
+        startAddress: startAddress,
+        startLatitude: startLat,
+        startLongitude: startLng,
+        endPlaceName: endPlaceName,
+        endAddress: endAddress,
+        endLatitude: endLat,
+        endLongitude: endLng,
         notes: dayNum > 3 ? 'Awaiting your custom plan. Add saved places or activities.' : null,
       ));
     }
@@ -207,6 +244,9 @@ Darjeeling Trip, 10 to 18 December 2026.
       dayId: '${tripId}_day_2',
       title: 'Visit Japanese Peace Pagoda',
       placeName: 'Japanese Peace Pagoda, Darjeeling',
+      address: 'West Point, Darjeeling, West Bengal',
+      latitude: 27.0305,
+      longitude: 88.2612,
       startTime: '05:30 PM',
       endTime: '06:00 PM',
       durationMinutes: 30,
@@ -222,6 +262,9 @@ Darjeeling Trip, 10 to 18 December 2026.
       dayId: '${tripId}_day_2',
       title: 'Explore Mall Road',
       placeName: 'Mall Road, Darjeeling',
+      address: 'The Mall, Darjeeling, West Bengal',
+      latitude: 27.0435,
+      longitude: 88.2685,
       startTime: '06:30 PM',
       endTime: null, // exact time unspecified
       category: ActivityCategory.sightseeing,
@@ -235,6 +278,9 @@ Darjeeling Trip, 10 to 18 December 2026.
       dayId: '${tripId}_day_2',
       title: 'Return and Rest',
       placeName: 'Live In Nature Homestay',
+      address: 'Near Mall Road, Darjeeling, West Bengal',
+      latitude: 27.0420,
+      longitude: 88.2610,
       startTime: '08:30 PM',
       endTime: null,
       category: ActivityCategory.rest,

@@ -82,6 +82,10 @@ class ReceiptParser {
     // 6. Detect Reference / UTR / Invoice Number
     final referenceId = _extractReferenceId(cleanedText, lines);
 
+    // 6b. Detect Taxes, GST breakdown, and Invoice Number
+    final taxAndInvoice = _extractTaxAndInvoice(cleanedText, lines, ocrLines: ocrLines);
+    final invoiceNumber = taxAndInvoice.invoiceNumber ?? referenceId;
+
     // 7. Infer Payment Method
     final paymentMethod = _detectPaymentMethod(cleanedText, sourceType);
 
@@ -135,7 +139,14 @@ class ReceiptParser {
       timeString: dateResult.timeString,
       categoryId: categoryId,
       paymentMethod: paymentMethod,
-      referenceId: referenceId,
+      referenceId: referenceId ?? invoiceNumber,
+      invoiceNumber: invoiceNumber,
+      subtotal: taxAndInvoice.subtotal,
+      gstAmount: taxAndInvoice.gstAmount,
+      cgst: taxAndInvoice.cgst,
+      sgst: taxAndInvoice.sgst,
+      igst: taxAndInvoice.igst,
+      taxPercentage: taxAndInvoice.taxPercentage,
       rawText: cleanedText,
       imagePath: imagePath,
       sourceType: sourceType,
@@ -289,10 +300,10 @@ class ReceiptParser {
     if (lower.contains('paytm') || lower.contains('@paytm')) {
       return 'Paytm';
     }
-    if (lower.contains('cred') || lower.contains('@axisbank')) {
+    if (RegExp(r'\bcred\b').hasMatch(lower) || lower.contains('@axisbank')) {
       return 'CRED UPI';
     }
-    if (lower.contains('navi')) {
+    if (RegExp(r'\bnavi\b').hasMatch(lower)) {
       return 'Navi UPI';
     }
     if (lower.contains('pine labs') ||
@@ -376,7 +387,9 @@ class ReceiptParser {
       'net amount',
       'total payable',
       'net payable',
+      'final payable',
       'final total',
+      'final amount',
       'total due',
       'total paid',
       'paid amount',
@@ -572,11 +585,15 @@ class ReceiptParser {
     // Taxes
     final taxKeywords = [
       'tax',
+      'gst',
       'cgst',
       'sgst',
       'igst',
       'vat',
       'service charge',
+      'cess',
+      'service tax',
+      'sales tax',
     ];
 
     // Discounts
@@ -716,30 +733,57 @@ class ReceiptParser {
       for (final offset in [-2, -1]) {
         final targetIdx = i + offset;
         if (targetIdx >= 0 && targetIdx < lines.length) {
-          final prevLower = lines[targetIdx].toLowerCase();
-          if (balanceKeywords.any((k) => prevLower.contains(k))) {
-            isBalanceLine = true;
-          }
-          if (promotionalKeywords.any((k) => prevLower.contains(k))) {
-            isPromotionalLine = true;
-          }
-          if (cashTenderedKeywords.any((k) => prevLower.contains(k))) {
-            isTenderedLine = true;
-          }
-          if (changeKeywords.any((k) => prevLower.contains(k))) {
-            isChangeLine = true;
-          }
-          if (accountSourceKeywords.any((k) => prevLower.contains(k))) {
-            isAccountSourceLine = true;
+          final prevLine = lines[targetIdx];
+          final prevLower = prevLine.toLowerCase();
+          // If the previous line had its own number/amount (e.g. "Coupon Savings: 54.00" or "Balance: 1200"),
+          // it was an itemized entry, not a dangling label for the current line!
+          final prevMasked = _maskNonAmountTokens(prevLine);
+          final prevHasDigits = RegExp(r'[0-9]').hasMatch(prevMasked);
+          if (!prevHasDigits) {
+            if (balanceKeywords.any((k) => prevLower.contains(k))) {
+              isBalanceLine = true;
+            }
+            if (promotionalKeywords.any((k) => prevLower.contains(k))) {
+              isPromotionalLine = true;
+            }
+            if (cashTenderedKeywords.any((k) => prevLower.contains(k))) {
+              isTenderedLine = true;
+            }
+            if (changeKeywords.any((k) => prevLower.contains(k))) {
+              isChangeLine = true;
+            }
+            if (accountSourceKeywords.any((k) => prevLower.contains(k))) {
+              isAccountSourceLine = true;
+            }
           }
         }
       }
 
-      final isTaxLine = taxKeywords.any((k) => lineLower.contains(k));
-      final isDiscountLine = discountKeywords.any((k) => lineLower.contains(k));
-      final isItemCountLine = itemCountKeywords.any(
-        (k) => lineLower.contains(k),
-      );
+      bool matchesKeyword(String text, List<String> list) {
+        return list.any((k) {
+          if (k.length <= 4 && !k.contains(' ')) {
+            return RegExp('\\b${RegExp.escape(k)}\\b').hasMatch(text);
+          }
+          return text.contains(k);
+        });
+      }
+
+      final isTaxLine = matchesKeyword(lineLower, taxKeywords);
+      final isDiscountLine = matchesKeyword(lineLower, discountKeywords);
+      final isItemCountLine = matchesKeyword(lineLower, itemCountKeywords);
+
+      // If current line explicitly contains a final payable or total keyword,
+      // it is a total, not a balance, promotional, tendered, or change line.
+      final bool hasExplicitTotalKeyword =
+          finalPayableKeywords.any((k) => lineLower.contains(k)) ||
+          generalTotalKeywords.any((k) => lineLower.contains(k));
+
+      if (hasExplicitTotalKeyword) {
+        isBalanceLine = false;
+        isPromotionalLine = false;
+        isTenderedLine = false;
+        isChangeLine = false;
+      }
 
       final bool isStandalone = standaloneNumberLinePattern.hasMatch(rawLine);
 
@@ -868,6 +912,12 @@ class ReceiptParser {
             associatedSubtotal;
         bool isGenTotal = generalTotalKeywords.any((k) => lineLower.contains(k)) ||
             associatedGenTotal;
+
+        if (isTaxLine || isDiscountLine || isItemCountLine) {
+          isFinal = false;
+          isSubtotal = false;
+          isGenTotal = false;
+        }
 
         if (isFinal) {
           isSubtotal = false;
@@ -1571,7 +1621,7 @@ class ReceiptParser {
     // 2b. Mask other invoice, bill, receipt, order, token numbers e.g. "Invoice: 12345", "Bill # 8812", "Ticket # 9988"
     masked = masked.replaceAll(
       RegExp(
-        r'\b(?:Invoice|Bill|Receipt|Order|Token|Challan|Memo|Doc|Check|Ticket|Counter|Cashier|POS)(?:\s*(?:No\.?|#|Id|ID|Num|Number|Code))?[:\s\-#]*[0-9A-Za-z\-_]+',
+        r'\b(?:Invoice|Bill|Receipt|Order|Token|Challan|Memo|Doc|Check|Ticket|Counter|Cashier|POS)(?:\s*(?:No\.?|#|Id|ID|Num|Number|Code)|[:\s\-#]+(?=[0-9A-Za-z\-_]*[0-9]))[:\s\-#]*[0-9A-Za-z\-_]+(?!\s*(?:total|amount|due|subtotal|payable))\b',
         caseSensitive: false,
       ),
       ' ',
@@ -1744,7 +1794,7 @@ class ReceiptParser {
     // 14. Mask percentages: 5%, 2.5%, 18%
     masked = masked.replaceAll(RegExp(r'\b[0-9]+(?:\.[0-9]+)?%'), ' ');
 
-    // 15. Mask postal pincodes and zip codes: "PIN 560001", "ZIP 94103"
+    // 15. Mask postal pincodes and zip codes: "PIN 560001", "ZIP 94103", or standalone 6-digit Indian PIN codes
     masked = masked.replaceAll(
       RegExp(
         r'\b(?:PIN(?:\s*CODE)?|POSTAL|ZIP(?:\s*CODE)?|PINCODE)[:\s\-]*\b[1-9][0-9]{5}\b',
@@ -1754,6 +1804,14 @@ class ReceiptParser {
     );
     masked = masked.replaceAll(
       RegExp(r'\bZIP[:\s\-]*[0-9]{5}(?:-[0-9]{4})?\b', caseSensitive: false),
+      ' ',
+    );
+    // Mask bare 6-digit Indian PIN codes in addresses (e.g. "Bangalore - 560001", "Kolkata 700029", "110001")
+    // Numbers in range 100000-999999 without currency prefix, commas or decimals
+    masked = masked.replaceAll(
+      RegExp(
+        r'(?<![₹\u20B9\u20A8\$€£\d,\.\?\*•Ff=~])\b[1-9][0-9]{5}\b(?![0-9,\.])',
+      ),
       ' ',
     );
 
@@ -2031,8 +2089,29 @@ class ReceiptParser {
       'Cinepolis',
       'Apollo Pharmacy',
       'MedPlus',
+      'Wellness Forever',
+      'Netmeds',
       '1mg',
       'Pharmeasy',
+      'Royal Enfield Service',
+      'Royal Enfield',
+      'IndianOil',
+      'Indian Oil',
+      'Hindustan Petroleum',
+      'Bharat Petroleum',
+      'HPCL',
+      'BPCL',
+      'Shell',
+      'Nayara Energy',
+      'More Retail',
+      'Reliance Fresh',
+      'Reliance Smart',
+      'Zudio',
+      'Westside',
+      'Pantaloons',
+      'Fastag',
+      'IRCTC',
+      'Oyo',
       'IndiGo',
       'Air India',
       'Vistara',
@@ -2201,6 +2280,182 @@ class ReceiptParser {
     return null;
   }
 
+  // ---------------------------------------------------------------------------
+  // Tax Breakdown & Invoice Details Extraction
+  // ---------------------------------------------------------------------------
+  static _TaxAndInvoiceResult _extractTaxAndInvoice(
+    String text,
+    List<String> lines, {
+    List<OcrLineData>? ocrLines,
+  }) {
+    double? subtotal;
+    double? gstAmount;
+    double? cgst;
+    double? sgst;
+    double? igst;
+    double? taxPercentage;
+    String? invoiceNumber;
+
+    // 1. Invoice Number Extraction
+    final invoiceRegex = RegExp(
+      r'\b(?:Tax\s*Invoice(?:\s*No\.?|\s*#)?|Retail\s*Invoice(?:\s*No\.?|\s*#)?|Invoice\s*(?:No\.?|#|Num|Number)?|Bill\s*(?:No\.?|#|Num|Number)?|Cash\s*Memo(?:\s*No\.?|\s*#)?|Receipt\s*(?:No\.?|#)?|Order\s*(?:No\.?|#|ID)?|Challan\s*(?:No\.?|#)?)[:\s\-#]+([A-Za-z0-9\-\/]{3,35})',
+      caseSensitive: false,
+    );
+    final invMatch = invoiceRegex.firstMatch(text);
+    if (invMatch != null) {
+      final val = invMatch.group(1)?.trim();
+      if (val != null &&
+          !RegExp(r'^(?:date|time|cash|total|tax|gstin|pan|amount)$', caseSensitive: false).hasMatch(val)) {
+        invoiceNumber = val;
+      }
+    }
+
+    // 2. Subtotal / Taxable Value
+    final subtotalRegex = RegExp(
+      r'\b(?:Sub\s*Total|Subtotal|Sub-total|Taxable\s*Value|Taxable\s*Amount|Base\s*Amount|Item\s*Total|Food\s*Total)[:\s]*(?:₹|Rs\.?|INR)?\s*([0-9]{1,7}(?:[,\.][0-9]{2,3})*(?:\.[0-9]{2})?)',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final m = subtotalRegex.firstMatch(line);
+      if (m != null) {
+        final raw = m.group(1)?.replaceAll(',', '');
+        final parsed = double.tryParse(raw ?? '');
+        if (parsed != null && parsed > 0) {
+          subtotal = parsed;
+          break;
+        }
+      }
+    }
+
+    // Standalone subtotal line fallback
+    if (subtotal == null) {
+      for (int i = 0; i < lines.length; i++) {
+        final l = lines[i].toLowerCase().trim();
+        if (l == 'sub total' || l == 'subtotal' || l == 'sub-total' || l == 'taxable value') {
+          if (i + 1 < lines.length) {
+            final next = lines[i + 1].trim();
+            final numMatch = RegExp(r'(?:₹|Rs\.?|INR)?\s*([0-9]+(?:\.[0-9]{2})?)').firstMatch(next);
+            if (numMatch != null) {
+              final parsed = double.tryParse(numMatch.group(1) ?? '');
+              if (parsed != null && parsed > 0) {
+                subtotal = parsed;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 3. CGST Extraction
+    final cgstRegex = RegExp(
+      r'\b(?:CGST|C-GST|Central\s*GST)(?:\s*@?\s*([0-9]+(?:\.[0-9]+)?)\s*%)?[:\s]*(?:₹|Rs\.?|INR)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final m = cgstRegex.firstMatch(line);
+      if (m != null) {
+        if (m.group(1) != null) {
+          final rate = double.tryParse(m.group(1)!);
+          if (rate != null) taxPercentage = (taxPercentage ?? 0.0) + rate;
+        }
+        final val = double.tryParse((m.group(2) ?? '').replaceAll(',', ''));
+        if (val != null) {
+          cgst = val;
+          break;
+        }
+      }
+    }
+
+    // 4. SGST Extraction
+    final sgstRegex = RegExp(
+      r'\b(?:SGST|S-GST|State\s*GST|UTGST)(?:\s*@?\s*([0-9]+(?:\.[0-9]+)?)\s*%)?[:\s]*(?:₹|Rs\.?|INR)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final m = sgstRegex.firstMatch(line);
+      if (m != null) {
+        if (m.group(1) != null) {
+          final rate = double.tryParse(m.group(1)!);
+          if (rate != null && (taxPercentage == null || taxPercentage <= rate)) {
+            taxPercentage = (taxPercentage ?? 0.0) + rate;
+          }
+        }
+        final val = double.tryParse((m.group(2) ?? '').replaceAll(',', ''));
+        if (val != null) {
+          sgst = val;
+          break;
+        }
+      }
+    }
+
+    // 5. IGST Extraction
+    final igstRegex = RegExp(
+      r'\b(?:IGST|I-GST|Integrated\s*GST)(?:\s*@?\s*([0-9]+(?:\.[0-9]+)?)\s*%)?[:\s]*(?:₹|Rs\.?|INR)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final m = igstRegex.firstMatch(line);
+      if (m != null) {
+        if (m.group(1) != null) {
+          final rate = double.tryParse(m.group(1)!);
+          if (rate != null) taxPercentage = rate;
+        }
+        final val = double.tryParse((m.group(2) ?? '').replaceAll(',', ''));
+        if (val != null) {
+          igst = val;
+          break;
+        }
+      }
+    }
+
+    // 6. GST Total Amount
+    final gstTotalRegex = RegExp(
+      r'\b(?:Total\s*GST|GST\s*Amount|Total\s*Tax|Tax\s*Amount)[:\s]*(?:₹|Rs\.?|INR)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final m = gstTotalRegex.firstMatch(line);
+      if (m != null) {
+        final val = double.tryParse((m.group(1) ?? '').replaceAll(',', ''));
+        if (val != null && val > 0) {
+          gstAmount = val;
+          break;
+        }
+      }
+    }
+
+    if (gstAmount == null) {
+      if (cgst != null && sgst != null) {
+        gstAmount = double.parse((cgst + sgst).toStringAsFixed(2));
+      } else if (igst != null) {
+        gstAmount = igst;
+      }
+    }
+
+    // 7. Standalone Tax Rate / Percentage
+    if (taxPercentage == null) {
+      final rateRegex = RegExp(
+        r'\b(?:GST|Tax)\s*(?:Rate|%)?[:\s@]*([0-9]+(?:\.[0-9]+)?)\s*%',
+        caseSensitive: false,
+      );
+      final m = rateRegex.firstMatch(text);
+      if (m != null) {
+        taxPercentage = double.tryParse(m.group(1) ?? '');
+      }
+    }
+
+    return _TaxAndInvoiceResult(
+      subtotal: subtotal,
+      gstAmount: gstAmount,
+      cgst: cgst,
+      sgst: sgst,
+      igst: igst,
+      taxPercentage: taxPercentage,
+      invoiceNumber: invoiceNumber,
+    );
+  }
+
   static bool _isIncomingTransaction(String text) {
     final explicitIncomingLabel = RegExp(
       r'\b(?:payment received|money received|amount received|received from|you received|amount credited|credited to|credited from|refund(?:ed)?\s+(?:credited|received|amount|successful|processed|initiated|to|₹|Rs\.?|INR))\b',
@@ -2233,20 +2488,7 @@ class ReceiptParser {
   static PaymentMethod _detectPaymentMethod(String text, String sourceType) {
     final lower = text.toLowerCase();
 
-    // Check UPI
-    if (sourceType.contains('UPI') ||
-        sourceType.contains('Google Pay') ||
-        sourceType.contains('PhonePe') ||
-        sourceType.contains('Paytm') ||
-        lower.contains('upi') ||
-        lower.contains('vpa') ||
-        lower.contains('utr') ||
-        lower.contains('@ok') ||
-        lower.contains('@ybl')) {
-      return PaymentMethod.upi;
-    }
-
-    // Check Cards
+    // Check Credit Cards
     if (lower.contains('credit card') ||
         lower.contains('card ending') ||
         lower.contains('visa') ||
@@ -2254,6 +2496,8 @@ class ReceiptParser {
         lower.contains('amex')) {
       return PaymentMethod.creditCard;
     }
+
+    // Check Debit Cards
     if (lower.contains('debit card') ||
         lower.contains('rupay') ||
         lower.contains('pos sale') ||
@@ -2267,6 +2511,19 @@ class ReceiptParser {
         lower.contains('paid by cash') ||
         lower.contains('cash receipt')) {
       return PaymentMethod.cash;
+    }
+
+    // Check UPI
+    if (sourceType.contains('UPI') ||
+        sourceType.contains('Google Pay') ||
+        sourceType.contains('PhonePe') ||
+        sourceType.contains('Paytm') ||
+        RegExp(r'\bupi\b').hasMatch(lower) ||
+        RegExp(r'\bvpa\b').hasMatch(lower) ||
+        RegExp(r'\butr\b').hasMatch(lower) ||
+        lower.contains('@ok') ||
+        lower.contains('@ybl')) {
+      return PaymentMethod.upi;
     }
 
     // Check Bank Transfer
@@ -2287,6 +2544,71 @@ class ReceiptParser {
   // ---------------------------------------------------------------------------
   static String _inferCategory(String? merchant, String fullText) {
     final text = '${merchant ?? ""} $fullText'.toLowerCase();
+
+    // Groceries & Supplies (Placed before Food so Quick Commerce like Swiggy Instamart matches groceries)
+    if (_matchesKeywords(text, [
+      'blinkit',
+      'zepto',
+      'instamart',
+      'bigbasket',
+      'dmart',
+      'supermarket',
+      'grocery',
+      'groceries',
+      'provisions',
+      'kirana',
+      'vegetables',
+      'fruits',
+      'milk',
+      'dairy',
+      'country delight',
+      'nature\'s basket',
+      'hypermarket',
+      'ration',
+      'spencer',
+      'reliance fresh',
+      'reliance smart',
+      'more retail',
+    ])) {
+      return 'groceries';
+    }
+
+    // Travel & Trips / Lodging (Placed before Food so Hotel & Resort bills with dining charges match travel)
+    if (_matchesKeywords(text, [
+      'indigo',
+      'air india',
+      'vistara',
+      'akasa',
+      'flight',
+      'airline',
+      'irctc',
+      'railway',
+      'train',
+      'makemytrip',
+      'goibibo',
+      'cleartrip',
+      'hotel',
+      'resort',
+      'hostel',
+      'airbnb',
+      'agoda',
+      'booking.com',
+      'travel',
+      'trip',
+      'stay',
+      'lodging',
+      'room tariff',
+      'check in',
+      'check out',
+      'inn',
+      'lodge',
+      'oyo',
+      'taj hotels',
+      'marriott',
+      'boarding pass',
+    ])) {
+      return 'travel';
+    }
 
     // Food & Dining
     if (_matchesKeywords(text, [
@@ -2325,36 +2647,16 @@ class ReceiptParser {
       'bar',
       'brewery',
       'pub',
+      'table no',
+      'kot',
+      'service charge',
+      'food total',
+      'bill of supply',
     ])) {
       return 'food';
     }
 
-    // Groceries
-    if (_matchesKeywords(text, [
-      'blinkit',
-      'zepto',
-      'instamart',
-      'bigbasket',
-      'dmart',
-      'supermarket',
-      'grocery',
-      'groceries',
-      'provisions',
-      'kirana',
-      'vegetables',
-      'fruits',
-      'milk',
-      'dairy',
-      'country delight',
-      'nature\'s basket',
-      'hypermarket',
-      'ration',
-      'spencer',
-    ])) {
-      return 'groceries';
-    }
-
-    // Transportation
+    // Transportation & Fuel & Vehicle Maintenance
     if (_matchesKeywords(text, [
       'uber',
       'ola',
@@ -2371,11 +2673,32 @@ class ReceiptParser {
       'bpcl',
       'iocl',
       'indian oil',
+      'indianoil',
+      'hindustan petroleum',
+      'bharat petroleum',
+      'nayara',
+      'nozzle',
+      'density',
+      'speed fuel',
+      'power fuel',
+      'xp95',
+      'xp100',
       'fastag',
       'toll',
+      'toll plaza',
       'parking',
       'cng',
       'commute',
+      'royal enfield',
+      'service center',
+      'vehicle service',
+      'garage',
+      'spare parts',
+      'engine oil',
+      'mobil',
+      'castrol',
+      'motul',
+      'nhai',
     ])) {
       return 'transport';
     }
@@ -2405,6 +2728,11 @@ class ReceiptParser {
       'shoppers stop',
       'store',
       'electronics',
+      'zudio',
+      'pantaloons',
+      'trends',
+      'reliance trends',
+      'marks & spencer',
     ])) {
       return 'shopping';
     }
@@ -2442,6 +2770,7 @@ class ReceiptParser {
       'pharmacy',
       'apollo',
       'medplus',
+      'wellness forever',
       '1mg',
       'pharmeasy',
       'netmeds',
@@ -2457,6 +2786,13 @@ class ReceiptParser {
       'dentist',
       'optical',
       'lenskart',
+      'chemist',
+      'druggist',
+      'medical store',
+      'dl no',
+      'rx',
+      'tablet',
+      'syrup',
     ])) {
       return 'health';
     }
@@ -2483,33 +2819,6 @@ class ReceiptParser {
       'bowling',
     ])) {
       return 'entertainment';
-    }
-
-    // Travel & Trips
-    if (_matchesKeywords(text, [
-      'indigo',
-      'air india',
-      'vistara',
-      'akasa',
-      'flight',
-      'airline',
-      'irctc',
-      'railway',
-      'train',
-      'makemytrip',
-      'goibibo',
-      'cleartrip',
-      'hotel',
-      'resort',
-      'hostel',
-      'airbnb',
-      'agoda',
-      'booking.com',
-      'travel',
-      'trip',
-      'stay',
-    ])) {
-      return 'travel';
     }
 
     // Education
@@ -2575,5 +2884,25 @@ class _DateResult {
     required this.date,
     required this.isConfident,
     this.timeString,
+  });
+}
+
+class _TaxAndInvoiceResult {
+  final double? subtotal;
+  final double? gstAmount;
+  final double? cgst;
+  final double? sgst;
+  final double? igst;
+  final double? taxPercentage;
+  final String? invoiceNumber;
+
+  const _TaxAndInvoiceResult({
+    this.subtotal,
+    this.gstAmount,
+    this.cgst,
+    this.sgst,
+    this.igst,
+    this.taxPercentage,
+    this.invoiceNumber,
   });
 }

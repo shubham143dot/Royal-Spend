@@ -1,11 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/utils/haptic_helper.dart';
 import '../../data/models/expense.dart';
+import '../../providers/expense_provider.dart';
+import '../../providers/travel_provider.dart';
 import 'liquid_pop.dart';
 
 /// Premier iOS Liquid Glass transaction list tile with theme-balanced surfaces,
@@ -30,6 +33,21 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool highContrast = MediaQuery.of(context).highContrast;
     final category = expense.category;
+
+    final bool isTravel = expense.tripId != null && expense.tripId!.isNotEmpty;
+    String? tripTitle;
+    if (isTravel) {
+      try {
+        final travelProv = Provider.of<TravelProvider>(context, listen: false);
+        tripTitle = travelProv.getTripTitle(expense.tripId);
+      } catch (_) {}
+    }
+
+    ExpenseScope currentScope = ExpenseScope.all;
+    try {
+      currentScope = context.watch<ExpenseProvider>().categoryScope;
+    } catch (_) {}
+    final bool isMixMode = currentScope == ExpenseScope.all;
 
     // Use accessible high-contrast colors in light mode, vibrant iOS neon in dark mode
     final amountColor = expense.isIncome
@@ -114,96 +132,155 @@ class TransactionTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(
-                        expense.paymentMethod.icon,
-                        size: 12,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        expense.paymentMethod.displayName,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '•',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        DateFormatter.formatTime(expense.date),
-                        style: AppTextStyles.bodySmall.copyWith(
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          expense.paymentMethod.icon,
+                          size: 11,
                           color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                         ),
-                      ),
-                      if (expense.tripId != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: (isDark ? AppColors.appleOrange : const Color(0xFFF97316))
-                                .withValues(alpha: isDark ? 0.25 : 0.15),
-                            borderRadius: BorderRadius.circular(6),
+                        const SizedBox(width: 3),
+                        Text(
+                          expense.paymentMethod.displayName,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11.5,
                           ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                CupertinoIcons.airplane,
-                                size: 9,
-                                color: Color(0xFFF97316),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '•',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormatter.formatTime(expense.date),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                        if (isTravel) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: (isDark ? AppColors.appleOrange : const Color(0xFFF97316))
+                                  .withValues(alpha: isDark ? 0.25 : 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (isDark ? AppColors.appleOrange : const Color(0xFFF97316))
+                                    .withValues(alpha: 0.35),
+                                width: 0.7,
                               ),
-                              SizedBox(width: 2),
-                              Text(
-                                'Trip',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.airplane,
+                                  size: 9,
                                   color: Color(0xFFF97316),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 2),
+                                Text(
+                                  tripTitle != null && tripTitle.isNotEmpty
+                                      ? tripTitle
+                                      : 'Trip',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFF97316),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ] else if (isMixMode) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                                  .withValues(alpha: isDark ? 0.22 : 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                                    .withValues(alpha: 0.35),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.person_fill,
+                                  size: 9,
+                                  color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Personal',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF6366F1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
 
-            // Amount
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  CurrencyFormatter.formatSigned(
-                    expense.amount,
-                    symbol: currencySymbol,
-                    isIncome: expense.isIncome,
+            // Amount & Category
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      CurrencyFormatter.formatSigned(
+                        expense.amount,
+                        symbol: currencySymbol,
+                        isIncome: expense.isIncome,
+                      ),
+                      style: AppTextStyles.currencySmall.copyWith(
+                        color: amountColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  style: AppTextStyles.currencySmall.copyWith(
-                    color: amountColor,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 2),
+                  Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  category.name,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

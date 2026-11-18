@@ -4,7 +4,7 @@ import 'package:royal_spend/data/models/expense.dart';
 import 'package:royal_spend/data/repositories/expense_repository.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
 
-class MockExpenseRepository implements IExpenseRepository {
+class MockExpenseRepository extends IExpenseRepository {
   final List<Expense> _storage = [];
   Budget? _budget;
 

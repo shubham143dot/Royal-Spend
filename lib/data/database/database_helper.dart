@@ -16,6 +16,7 @@ import '../models/travel_checklist_item.dart';
 import '../models/travel_split.dart';
 import '../models/travel_transport.dart';
 import '../models/trip.dart';
+import '../../core/services/ocr/receipt_storage_service.dart';
 
 class DatabaseHelper {
   static const String _databaseName = 'royal_spend.db';
@@ -40,8 +41,12 @@ class DatabaseHelper {
 
     String path;
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      final appSupportDir = await getApplicationSupportDirectory();
-      path = p.join(appSupportDir.path, _databaseName);
+      try {
+        final appSupportDir = await getApplicationSupportDirectory();
+        path = p.join(appSupportDir.path, _databaseName);
+      } catch (_) {
+        path = inMemoryDatabasePath;
+      }
     } else {
       final dbPath = await getDatabasesPath();
       path = p.join(dbPath, _databaseName);
@@ -60,7 +65,7 @@ class DatabaseHelper {
 
   Future<void> _ensureSchemaIntegrity(DatabaseExecutor db) async {
     try {
-      // Verify expenses table and add trip_id column if not exists
+      // Verify expenses table and add trip_id and offline sync columns if not exist
       final expenseColumns = await db.rawQuery('PRAGMA table_info(expenses)');
       final hasTripId = expenseColumns.any((col) => col['name'] == 'trip_id');
       if (!hasTripId) {
@@ -68,9 +73,61 @@ class DatabaseHelper {
         await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses (trip_id);');
       }
+      if (!expenseColumns.any((col) => col['name'] == 'user_id')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN user_id TEXT;');
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses (user_id);');
+      }
+      if (!expenseColumns.any((col) => col['name'] == 'sync_status')) {
+        await db.execute(
+            "ALTER TABLE expenses ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'synced';");
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_expenses_sync_status ON expenses (sync_status);');
+      }
+      if (!expenseColumns.any((col) => col['name'] == 'receipt_path')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN receipt_path TEXT;');
+      }
+      if (!expenseColumns.any((col) => col['name'] == 'cloud_image_url')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN cloud_image_url TEXT;');
+      }
+      if (!expenseColumns.any((col) => col['name'] == 'ocr_data')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN ocr_data TEXT;');
+      }
 
       // Ensure all travel tables exist
       await _createTravelTables(db);
+
+      // Verify itinerary_days table columns
+      final dayColumns =
+          await db.rawQuery('PRAGMA table_info(itinerary_days)');
+      final hasStartPlace =
+          dayColumns.any((col) => col['name'] == 'start_place_name');
+      if (!hasStartPlace && dayColumns.isNotEmpty) {
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN start_place_name TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN start_address TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN start_time TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN start_notes TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN start_type TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN end_place_name TEXT;');
+        await db.execute(
+            'ALTER TABLE itinerary_days ADD COLUMN end_time TEXT;');
+      }
+
+      if (!dayColumns.any((col) => col['name'] == 'start_latitude') && dayColumns.isNotEmpty) {
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN start_latitude REAL;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN start_longitude REAL;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN start_place_id TEXT;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN end_address TEXT;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN end_latitude REAL;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN end_longitude REAL;');
+        await db.execute('ALTER TABLE itinerary_days ADD COLUMN end_place_id TEXT;');
+      }
 
       // Verify itinerary_activities table columns
       final actColumns =
@@ -81,6 +138,45 @@ class DatabaseHelper {
         await db.execute(
             'ALTER TABLE itinerary_activities ADD COLUMN is_overnight INTEGER NOT NULL DEFAULT 0;');
       }
+      if (!actColumns.any((col) => col['name'] == 'place_id') && actColumns.isNotEmpty) {
+        await db.execute(
+            'ALTER TABLE itinerary_activities ADD COLUMN place_id TEXT;');
+      }
+
+      // Verify saved_places table columns
+      final placeColumns =
+          await db.rawQuery('PRAGMA table_info(saved_places)');
+      if (!placeColumns.any((col) => col['name'] == 'address') && placeColumns.isNotEmpty) {
+        await db.execute(
+            'ALTER TABLE saved_places ADD COLUMN address TEXT;');
+      }
+      if (!placeColumns.any((col) => col['name'] == 'place_id') && placeColumns.isNotEmpty) {
+        await db.execute(
+            'ALTER TABLE saved_places ADD COLUMN place_id TEXT;');
+      }
+
+      // Ensure deleted_records table exists for tombstone synchronization
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS deleted_records (
+          id TEXT PRIMARY KEY,
+          record_type TEXT NOT NULL,
+          deleted_at INTEGER NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_deleted_records_type ON deleted_records (record_type)
+      ''');
+
+      // Ensure indexed query performance for date-based retrieval & composite lookups
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date DESC)
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_expenses_trip_date ON expenses (trip_id, date DESC)
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses (user_id, date DESC)
+      ''');
 
       // Verify categories
       final catRows =
@@ -114,7 +210,12 @@ class DatabaseHelper {
         is_income INTEGER NOT NULL DEFAULT 0,
         trip_id TEXT,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        user_id TEXT,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        receipt_path TEXT,
+        cloud_image_url TEXT,
+        ocr_data TEXT
       )
     ''');
 
@@ -128,6 +229,22 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE INDEX idx_expenses_trip ON expenses (trip_id)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_expenses_user_id ON expenses (user_id)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_expenses_sync_status ON expenses (sync_status)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_expenses_trip_date ON expenses (trip_id, date DESC)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_expenses_user_date ON expenses (user_id, date DESC)
     ''');
 
     // 2. Budgets Table
@@ -161,6 +278,18 @@ class DatabaseHelper {
 
     // 4. Travel Tables
     await _createTravelTables(db);
+
+    // 5. Tombstones Table for Permanent Deletion Preservation
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS deleted_records (
+        id TEXT PRIMARY KEY,
+        record_type TEXT NOT NULL,
+        deleted_at INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_deleted_records_type ON deleted_records (record_type)
+    ''');
   }
 
   Future<void> _createTravelTables(DatabaseExecutor db) async {
@@ -207,6 +336,20 @@ class DatabaseHelper {
         title TEXT,
         notes TEXT,
         is_completed INTEGER NOT NULL DEFAULT 0,
+        start_place_name TEXT,
+        start_address TEXT,
+        start_latitude REAL,
+        start_longitude REAL,
+        start_place_id TEXT,
+        start_time TEXT,
+        start_notes TEXT,
+        start_type TEXT,
+        end_place_name TEXT,
+        end_address TEXT,
+        end_latitude REAL,
+        end_longitude REAL,
+        end_place_id TEXT,
+        end_time TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
@@ -233,6 +376,7 @@ class DatabaseHelper {
         address TEXT,
         latitude REAL,
         longitude REAL,
+        place_id TEXT,
         estimated_cost REAL DEFAULT 0.0,
         booking_status TEXT DEFAULT 'unconfirmed',
         booking_reference TEXT,
@@ -257,10 +401,12 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         trip_id TEXT NOT NULL,
         name TEXT NOT NULL,
+        address TEXT,
         location_notes TEXT,
         category TEXT DEFAULT 'Sightseeing',
         latitude REAL,
         longitude REAL,
+        place_id TEXT,
         planned_date INTEGER,
         is_visited INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
@@ -382,6 +528,7 @@ class DatabaseHelper {
   // --- Expense CRUD Operations ---
 
   Future<int> insertExpense(Expense expense) async {
+    if (await isRecordDeleted(expense.id)) return 0;
     final db = await database;
     return await db.insert(
       'expenses',
@@ -402,8 +549,65 @@ class DatabaseHelper {
 
   Future<int> deleteExpense(String id) async {
     final db = await database;
+    try {
+      final rows = await db.query(
+        'expenses',
+        columns: ['receipt_path'],
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (rows.isNotEmpty) {
+        final path = rows.first['receipt_path'] as String?;
+        if (path != null && path.isNotEmpty) {
+          await ReceiptStorageService.instance.deleteReceipt(path);
+        }
+      }
+    } catch (_) {}
+
+    await markRecordAsDeleted(id, 'expense');
     return await db.delete(
       'expenses',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Expense>> getPendingExpenses({String? userId}) async {
+    final db = await database;
+    final whereClauses = <String>['(sync_status = ? OR sync_status = ?)'];
+    final whereArgs = <dynamic>[
+      ExpenseSyncStatus.pending.name,
+      ExpenseSyncStatus.failed.name,
+    ];
+    if (userId != null && userId.isNotEmpty) {
+      whereClauses.add('(user_id = ? OR user_id IS NULL)');
+      whereArgs.add(userId);
+    }
+    final List<Map<String, dynamic>> maps = await db.query(
+      'expenses',
+      where: whereClauses.join(' AND '),
+      whereArgs: whereArgs,
+      orderBy: 'created_at ASC',
+    );
+    return maps.map((m) => Expense.fromMap(m)).toList();
+  }
+
+  Future<int> updateExpenseSyncStatus(
+    String id,
+    ExpenseSyncStatus status, {
+    String? cloudImageUrl,
+  }) async {
+    final db = await database;
+    final values = <String, dynamic>{
+      'sync_status': status.name,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    };
+    if (cloudImageUrl != null) {
+      values['cloud_image_url'] = cloudImageUrl;
+    }
+    return await db.update(
+      'expenses',
+      values,
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -427,6 +631,58 @@ class DatabaseHelper {
       'expenses',
       where: 'date >= ? AND date <= ?',
       whereArgs: [start, end],
+      orderBy: 'date DESC, created_at DESC',
+    );
+    return maps.map((m) => Expense.fromMap(m)).toList();
+  }
+
+  Future<List<Expense>> getExpensesForDate(DateTime date, {String? tripId, bool? isIncome}) async {
+    final db = await database;
+    final start = DateTime(date.year, date.month, date.day, 0, 0, 0, 0).millisecondsSinceEpoch;
+    final end = DateTime(date.year, date.month, date.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+
+    final conditions = ['date >= ?', 'date <= ?'];
+    final args = <dynamic>[start, end];
+
+    if (tripId != null) {
+      conditions.add('trip_id = ?');
+      args.add(tripId);
+    }
+    if (isIncome != null) {
+      conditions.add('is_income = ?');
+      args.add(isIncome ? 1 : 0);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'expenses',
+      where: conditions.join(' AND '),
+      whereArgs: args,
+      orderBy: 'date DESC, created_at DESC',
+    );
+    return maps.map((m) => Expense.fromMap(m)).toList();
+  }
+
+  Future<List<Expense>> getExpensesForDateRange(DateTime start, DateTime end, {String? tripId, bool? isIncome}) async {
+    final db = await database;
+    final startEpoch = start.millisecondsSinceEpoch;
+    final endEpoch = end.millisecondsSinceEpoch;
+
+    final conditions = ['date >= ?', 'date <= ?'];
+    final args = <dynamic>[startEpoch, endEpoch];
+
+    if (tripId != null) {
+      conditions.add('trip_id = ?');
+      args.add(tripId);
+    }
+    if (isIncome != null) {
+      conditions.add('is_income = ?');
+      args.add(isIncome ? 1 : 0);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'expenses',
+      where: conditions.join(' AND '),
+      whereArgs: args,
       orderBy: 'date DESC, created_at DESC',
     );
     return maps.map((m) => Expense.fromMap(m)).toList();
@@ -457,6 +713,12 @@ class DatabaseHelper {
     return Budget.fromMap(maps.first);
   }
 
+  Future<List<Budget>> getAllBudgets() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('budgets');
+    return maps.map((m) => Budget.fromMap(m)).toList();
+  }
+
   Future<int> setBudgetForMonth(Budget budget) async {
     final db = await database;
     return await db.insert(
@@ -466,9 +728,15 @@ class DatabaseHelper {
     );
   }
 
+  Future<int> deleteBudget(String id) async {
+    final db = await database;
+    return await db.delete('budgets', where: 'id = ?', whereArgs: [id]);
+  }
+
   // --- Multi-Trip Travel CRUD Operations ---
 
   Future<int> insertTrip(Trip trip) async {
+    if (await isRecordDeleted(trip.id)) return 0;
     final db = await database;
     return await db.insert(
       'trips',
@@ -490,7 +758,35 @@ class DatabaseHelper {
   Future<int> deleteTrip(String tripId, {bool deleteExpenses = false}) async {
     final db = await database;
     return await db.transaction<int>((txn) async {
+      // Gather all child IDs to mark as deleted tombstones
+      final daysRows = await txn.query('itinerary_days', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final dayIds = daysRows.map((r) => r['id'] as String).toList();
+
+      final actRows = await txn.query('itinerary_activities', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final actIds = actRows.map((r) => r['id'] as String).toList();
+
+      final placeRows = await txn.query('saved_places', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final placeIds = placeRows.map((r) => r['id'] as String).toList();
+
+      final transRows = await txn.query('travel_transports', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final transIds = transRows.map((r) => r['id'] as String).toList();
+
+      final accRows = await txn.query('travel_accommodations', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final accIds = accRows.map((r) => r['id'] as String).toList();
+
+      final checkRows = await txn.query('travel_checklists', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final checkIds = checkRows.map((r) => r['id'] as String).toList();
+
+      final splitRows = await txn.query('travel_splits', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      final splitIds = splitRows.map((r) => r['id'] as String).toList();
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final allChildIds = <String>[tripId, ...dayIds, ...actIds, ...placeIds, ...transIds, ...accIds, ...checkIds, ...splitIds];
+
       if (deleteExpenses) {
+        final expRows = await txn.query('expenses', columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+        final expIds = expRows.map((r) => r['id'] as String).toList();
+        allChildIds.addAll(expIds);
         await txn.delete('expenses', where: 'trip_id = ?', whereArgs: [tripId]);
       } else {
         // Disassociate expenses safely so financial history remains intact
@@ -499,6 +795,19 @@ class DatabaseHelper {
           [tripId],
         );
       }
+
+      for (final id in allChildIds) {
+        await txn.insert(
+          'deleted_records',
+          {
+            'id': id,
+            'record_type': 'travel_cascade',
+            'deleted_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
       await txn.delete('itinerary_activities',
           where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('itinerary_days',
@@ -541,6 +850,7 @@ class DatabaseHelper {
   // --- Itinerary Day Operations ---
 
   Future<int> insertItineraryDay(ItineraryDay day) async {
+    if (await isRecordDeleted(day.id)) return 0;
     final db = await database;
     return await db.insert(
       'itinerary_days',
@@ -562,6 +872,24 @@ class DatabaseHelper {
   Future<int> deleteItineraryDay(String dayId) async {
     final db = await database;
     return await db.transaction<int>((txn) async {
+      final actRows = await txn.query('itinerary_activities',
+          columns: ['id'], where: 'day_id = ?', whereArgs: [dayId]);
+      final actIds = actRows.map((r) => r['id'] as String).toList();
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      await txn.insert(
+        'deleted_records',
+        {'id': dayId, 'record_type': 'day', 'deleted_at': now},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      for (final aid in actIds) {
+        await txn.insert(
+          'deleted_records',
+          {'id': aid, 'record_type': 'activity', 'deleted_at': now},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
       await txn.delete('itinerary_activities',
           where: 'day_id = ?', whereArgs: [dayId]);
       return await txn
@@ -583,6 +911,7 @@ class DatabaseHelper {
   // --- Itinerary Activity Operations ---
 
   Future<int> insertActivity(ItineraryActivity activity) async {
+    if (await isRecordDeleted(activity.id)) return 0;
     final db = await database;
     return await db.insert(
       'itinerary_activities',
@@ -603,6 +932,7 @@ class DatabaseHelper {
 
   Future<int> deleteActivity(String activityId) async {
     final db = await database;
+    await markRecordAsDeleted(activityId, 'activity');
     return await db.delete(
       'itinerary_activities',
       where: 'id = ?',
@@ -653,6 +983,7 @@ class DatabaseHelper {
   // --- Saved Places Operations ---
 
   Future<int> insertSavedPlace(SavedPlace place) async {
+    if (await isRecordDeleted(place.id)) return 0;
     final db = await database;
     return await db.insert(
       'saved_places',
@@ -673,6 +1004,7 @@ class DatabaseHelper {
 
   Future<int> deleteSavedPlace(String placeId) async {
     final db = await database;
+    await markRecordAsDeleted(placeId, 'place');
     return await db.delete(
       'saved_places',
       where: 'id = ?',
@@ -694,6 +1026,7 @@ class DatabaseHelper {
   // --- Travel Transport Operations ---
 
   Future<int> insertTransport(TravelTransport transport) async {
+    if (await isRecordDeleted(transport.id)) return 0;
     final db = await database;
     return await db.insert(
       'travel_transports',
@@ -714,6 +1047,7 @@ class DatabaseHelper {
 
   Future<int> deleteTransport(String transportId) async {
     final db = await database;
+    await markRecordAsDeleted(transportId, 'transport');
     return await db.delete(
       'travel_transports',
       where: 'id = ?',
@@ -735,6 +1069,7 @@ class DatabaseHelper {
   // --- Travel Accommodation Operations ---
 
   Future<int> insertAccommodation(TravelAccommodation accommodation) async {
+    if (await isRecordDeleted(accommodation.id)) return 0;
     final db = await database;
     return await db.insert(
       'travel_accommodations',
@@ -755,6 +1090,7 @@ class DatabaseHelper {
 
   Future<int> deleteAccommodation(String accommodationId) async {
     final db = await database;
+    await markRecordAsDeleted(accommodationId, 'accommodation');
     return await db.delete(
       'travel_accommodations',
       where: 'id = ?',
@@ -777,6 +1113,7 @@ class DatabaseHelper {
   // --- Travel Checklist Operations ---
 
   Future<int> insertChecklistItem(TravelChecklistItem item) async {
+    if (await isRecordDeleted(item.id)) return 0;
     final db = await database;
     return await db.insert(
       'travel_checklists',
@@ -797,6 +1134,7 @@ class DatabaseHelper {
 
   Future<int> deleteChecklistItem(String itemId) async {
     final db = await database;
+    await markRecordAsDeleted(itemId, 'checklist');
     return await db.delete(
       'travel_checklists',
       where: 'id = ?',
@@ -818,6 +1156,7 @@ class DatabaseHelper {
   // --- Travel Split Operations ---
 
   Future<int> insertSplit(TravelSplit split) async {
+    if (await isRecordDeleted(split.id)) return 0;
     final db = await database;
     return await db.insert(
       'travel_splits',
@@ -828,6 +1167,7 @@ class DatabaseHelper {
 
   Future<int> deleteSplit(String splitId) async {
     final db = await database;
+    await markRecordAsDeleted(splitId, 'split');
     return await db.delete(
       'travel_splits',
       where: 'id = ?',
@@ -844,6 +1184,63 @@ class DatabaseHelper {
       orderBy: 'created_at DESC',
     );
     return maps.map((m) => TravelSplit.fromMap(m)).toList();
+  }
+
+  // --- Tombstone / Deletion Management ---
+
+  Future<void> markRecordAsDeleted(String id, String recordType) async {
+    final db = await database;
+    await db.insert(
+      'deleted_records',
+      {
+        'id': id,
+        'record_type': recordType,
+        'deleted_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> markRecordsAsDeleted(List<String> ids, String recordType) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final id in ids) {
+      batch.insert(
+        'deleted_records',
+        {
+          'id': id,
+          'record_type': recordType,
+          'deleted_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<bool> isRecordDeleted(String id) async {
+    final db = await database;
+    final res = await db.query(
+      'deleted_records',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return res.isNotEmpty;
+  }
+
+  Future<Set<String>> getAllDeletedRecordIds() async {
+    final db = await database;
+    final res = await db.query('deleted_records', columns: ['id']);
+    return res.map((r) => r['id'] as String).toSet();
+  }
+
+  Future<void> unmarkRecordAsDeleted(String id) async {
+    final db = await database;
+    await db.delete('deleted_records', where: 'id = ?', whereArgs: [id]);
   }
 
   // --- Data Management & Seeding ---
@@ -864,6 +1261,21 @@ class DatabaseHelper {
     await db.delete('travel_checklists');
     await db.delete('travel_splits');
     await db.delete('trips');
+  }
+
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.delete('expenses');
+    await db.delete('budgets');
+    await db.delete('itinerary_activities');
+    await db.delete('itinerary_days');
+    await db.delete('saved_places');
+    await db.delete('travel_transports');
+    await db.delete('travel_accommodations');
+    await db.delete('travel_checklists');
+    await db.delete('travel_splits');
+    await db.delete('trips');
+    await db.delete('deleted_records');
   }
 
   Future<void> seedRealisticSampleData() async {

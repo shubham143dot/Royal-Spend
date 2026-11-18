@@ -294,7 +294,7 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.byType(GoogleBrandIcon), findsOneWidget);
       expect(find.text('Don’t have an account? Create one'), findsOneWidget);
-      expect(find.text('Skip for now'), findsOneWidget);
+      expect(find.text('Skip for now'), findsNothing);
       expect(
         find.text('By continuing, you agree to our Terms of Service & Privacy Policy.'),
         findsOneWidget,

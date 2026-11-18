@@ -1,30 +1,30 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/services/auth/firebase_auth_gateway.dart';
 import '../../core/services/firestore/firestore_sync_service.dart';
+import '../../core/services/network/network_status_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../core/theme/glass_decorations.dart';
 import '../../core/utils/currency_formatter.dart';
-import '../../core/utils/date_formatter.dart';
 import '../../core/utils/haptic_helper.dart';
 import '../../data/database/database_helper.dart';
+import '../../data/repositories/settings_repository.dart';
+import '../../providers/app_lock_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/profile_image_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/travel_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/google_brand_icon.dart';
 import '../widgets/liquid_pop.dart';
+import '../widgets/privacy_policy_sheet.dart';
 import '../widgets/set_budget_sheet.dart';
 import 'auth/login_screen.dart';
 import 'intro/intro_screen.dart';
@@ -36,6 +36,12 @@ class ProfileSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final expenseProvider = context.watch<ExpenseProvider>();
+    AppLockProvider? appLock;
+    try {
+      appLock = context.watch<AppLockProvider>();
+    } catch (_) {
+      appLock = null;
+    }
     final isDark = settings.isDarkMode(context);
 
     return SafeArea(
@@ -176,31 +182,37 @@ class ProfileSettingsScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(7.5),
-                            color: AppColors.applePurple,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(7.5),
+                              color: AppColors.applePurple,
+                            ),
+                            child: const Center(
+                              child: Icon(CupertinoIcons.waveform, size: 17, color: Colors.white),
+                            ),
                           ),
-                          child: const Center(
-                            child: Icon(CupertinoIcons.waveform, size: 17, color: Colors.white),
+                          const SizedBox(width: 14),
+                          Flexible(
+                            child: Text(
+                              'Tactile Haptics',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Text(
-                          'Tactile Haptics',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     CupertinoSwitch(
                       value: settings.hapticsEnabled,
                       activeTrackColor: AppColors.appleGreen,
@@ -215,12 +227,94 @@ class ProfileSettingsScreen extends StatelessWidget {
             ),
           ),
 
-          // Section 4: Data Management
+          // Section: Security (Native App Lock)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
               child: Text(
-                'DATA MANAGEMENT',
+                'SECURITY',
+                style: AppTextStyles.labelUppercase.copyWith(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: _buildSecurityCard(context, appLock, isDark),
+            ),
+          ),
+
+          // Section: Admin Tools (Exclusive to subhamsoudeep@gmail.com)
+          if (settings.isAdmin) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+                child: Text(
+                  'ADMIN TOOLS',
+                  style: AppTextStyles.labelUppercase.copyWith(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: GlassCard(
+                  isDark: isDark,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.sparkles,
+                        iconColor: AppColors.appleOrange,
+                        title: 'Load Realistic Sample Data',
+                        subtitle: 'Populate expenses across categories',
+                        isDark: isDark,
+                        onTap: () => _confirmSeedData(context, expenseProvider),
+                      ),
+                      _buildDivider(isDark),
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.play_circle_fill,
+                        iconColor: AppColors.royalGold,
+                        title: 'Replay Intro & Brand Video',
+                        subtitle: 'Experience the Royal Spend cinematic intro',
+                        isDark: isDark,
+                        onTap: () {
+                          HapticHelper.mediumImpact();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const IntroScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildDivider(isDark),
+                      _buildSettingsTile(
+                        icon: CupertinoIcons.trash_fill,
+                        iconColor: AppColors.appleRed,
+                        title: 'Clear All Expenses',
+                        subtitle: 'Permanently remove all local transaction records',
+                        isDark: isDark,
+                        onTap: () => _confirmClearData(context, expenseProvider),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // Section: Legal & Privacy
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              child: Text(
+                'LEGAL & PRIVACY',
                 style: AppTextStyles.labelUppercase.copyWith(
                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                   letterSpacing: 0.6,
@@ -237,46 +331,13 @@ class ProfileSettingsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildSettingsTile(
-                      icon: CupertinoIcons.share,
-                      iconColor: AppColors.appleBlue,
-                      title: 'Export Transactions',
-                      subtitle: 'Copy records as CSV or JSON to clipboard',
-                      isDark: isDark,
-                      onTap: () => _showExportSheet(context, expenseProvider, settings),
-                    ),
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.sparkles,
-                      iconColor: AppColors.appleOrange,
-                      title: 'Load Realistic Sample Data',
-                      subtitle: 'Populate expenses across categories',
-                      isDark: isDark,
-                      onTap: () => _confirmSeedData(context, expenseProvider),
-                    ),
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.play_circle_fill,
+                      icon: CupertinoIcons.shield_lefthalf_fill,
                       iconColor: AppColors.royalGold,
-                      title: 'Replay Intro & Brand Video',
-                      subtitle: 'Experience the Royal Spend cinematic intro',
+                      title: 'Privacy Policy',
+                      subtitle: 'Zero data sales • On-device OCR • Encrypted sync',
+                      trailingText: 'Legal',
                       isDark: isDark,
-                      onTap: () {
-                        HapticHelper.mediumImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const IntroScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: CupertinoIcons.trash_fill,
-                      iconColor: AppColors.appleRed,
-                      title: 'Clear All Expenses',
-                      subtitle: 'Permanently remove all local transaction records',
-                      isDark: isDark,
-                      onTap: () => _confirmClearData(context, expenseProvider),
+                      onTap: () => PrivacyPolicySheet.show(context, isDark: isDark),
                     ),
                   ],
                 ),
@@ -421,10 +482,14 @@ class ProfileSettingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Icon(
-                        CupertinoIcons.pencil_circle_fill,
-                        size: 16,
-                        color: AppColors.royalGold.withValues(alpha: 0.8),
+                      GestureDetector(
+                        key: const ValueKey('edit_name_button'),
+                        onTap: () => _showNameDialog(context, settings),
+                        child: Icon(
+                          CupertinoIcons.pencil_circle_fill,
+                          size: 16,
+                          color: AppColors.royalGold.withValues(alpha: 0.8),
+                        ),
                       ),
                     ],
                   ),
@@ -664,39 +729,46 @@ class ProfileSettingsScreen extends StatelessWidget {
     final user = _getFirebaseUser();
     final isGoogle = user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
     final isEmail = user?.providerData.any((p) => p.providerId == 'password') ?? false;
-    final userEmail = user?.email;
+    final userEmail = user?.email ?? settings.userEmail;
+    final displayName = user?.displayName;
+    final hasDisplayName = displayName != null && displayName.isNotEmpty;
 
     return GlassCard(
       isDark: isDark,
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         children: [
-          if (user != null) ...[
-            _buildSettingsTile(
-              icon: isGoogle ? Icons.g_mobiledata_rounded : CupertinoIcons.mail_solid,
-              customLeading: isGoogle
-                  ? Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(7.5),
-                        color: Colors.white,
-                      ),
-                      child: const Center(child: GoogleBrandIcon(size: 18)),
-                    )
-                  : null,
-              iconColor: isGoogle ? AppColors.appleBlue : AppColors.royalGold,
-              title: (user.displayName != null && user.displayName!.isNotEmpty)
-                  ? user.displayName!
-                  : (userEmail ?? 'Authenticated User'),
-              subtitle: isGoogle
-                  ? 'Connected via Google ($userEmail)'
-                  : isEmail
-                      ? 'Connected via Email & Password ($userEmail)'
-                      : 'Firebase Cloud Account ($userEmail)',
-              trailingText: 'Active',
-              isDark: isDark,
-              onTap: () => _showProfileActions(context, settings),
+          if (user != null || (userEmail != null && userEmail.isNotEmpty)) ...[
+            ValueListenableBuilder<bool>(
+              valueListenable: NetworkStatusService.instance.isOnline,
+              builder: (context, isOnline, _) {
+                return _buildSettingsTile(
+                  icon: isGoogle ? Icons.g_mobiledata_rounded : CupertinoIcons.mail_solid,
+                  customLeading: isGoogle
+                      ? Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(7.5),
+                            color: Colors.white,
+                          ),
+                          child: const Center(child: GoogleBrandIcon(size: 18)),
+                        )
+                      : null,
+                  iconColor: isGoogle ? AppColors.appleBlue : AppColors.royalGold,
+                  title: hasDisplayName ? displayName : (userEmail ?? 'Authenticated User'),
+                  subtitle: isGoogle
+                      ? 'Connected via Google ($userEmail)'
+                      : isEmail
+                          ? 'Connected via Email & Password ($userEmail)'
+                          : (settings.isAdmin
+                              ? 'Administrator Account ($userEmail)'
+                              : 'Firebase Cloud Account ($userEmail)'),
+                  trailingText: settings.isAdmin ? 'Admin' : (isOnline ? 'Active' : 'Offline'),
+                  isDark: isDark,
+                  onTap: () => _showProfileActions(context, settings),
+                );
+              },
             ),
             _buildDivider(isDark),
             _buildSettingsTile(
@@ -710,13 +782,15 @@ class ProfileSettingsScreen extends StatelessWidget {
                 HapticHelper.mediumImpact();
                 final expenseProv = context.read<ExpenseProvider>();
                 final travelProv = context.read<TravelProvider>();
-                await FirestoreSyncService.instance.syncAll(
-                  user.uid,
-                  onRefresh: () {
-                    expenseProv.refresh();
-                    travelProv.refresh();
-                  },
-                );
+                if (user != null) {
+                  await FirestoreSyncService.instance.syncAll(
+                    user.uid,
+                    onRefresh: () {
+                      expenseProv.refresh();
+                      travelProv.refresh();
+                    },
+                  );
+                }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -772,82 +846,6 @@ class ProfileSettingsScreen extends StatelessWidget {
               email: userEmail,
             ),
           ),
-          if (user != null) ...[
-            _buildDivider(isDark),
-            _buildSettingsTile(
-              icon: CupertinoIcons.trash_circle_fill,
-              iconColor: AppColors.appleRed,
-              title: 'Delete Account & Cloud Data',
-              titleColor: AppColors.appleRed,
-              subtitle: 'Permanently remove account and cloud database records',
-              isDark: isDark,
-              onTap: () => _confirmDeleteAccount(context, settings),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _confirmDeleteAccount(BuildContext context, SettingsProvider settings) {
-    HapticHelper.heavyImpact();
-    showCupertinoDialog<void>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Delete Royal Spend Account?'),
-        content: const Padding(
-          padding: EdgeInsets.only(top: 8.0),
-          child: Text(
-            'This action is irreversible.\n\nAll your cloud-saved expenses, budgets, travel plans, itineraries, and uploaded profile photos will be permanently deleted from Firebase.',
-            style: TextStyle(fontSize: 13),
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              final expenseProv = context.read<ExpenseProvider>();
-              final travelProv = context.read<TravelProvider>();
-
-              Navigator.of(ctx).pop();
-              HapticHelper.heavyImpact();
-
-              try {
-                if (Firebase.apps.isNotEmpty) {
-                  final gateway = FirebaseAuthGateway();
-                  await gateway.deleteAccount();
-                }
-              } catch (e) {
-                debugPrint('Delete account error: $e');
-              }
-
-              // Clean local data
-              try {
-                await expenseProv.clearAllData();
-                await DatabaseHelper.instance.clearAllTravelData();
-                await travelProv.refresh();
-              } catch (_) {}
-
-              await settings.logout();
-
-              navigator.pushAndRemoveUntil<void>(
-                PageRouteBuilder<void>(
-                  transitionDuration: const Duration(milliseconds: 400),
-                  pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                ),
-                (route) => false,
-              );
-            },
-            child: const Text('Permanently Delete'),
-          ),
         ],
       ),
     );
@@ -898,6 +896,15 @@ class ProfileSettingsScreen extends StatelessWidget {
                 debugPrint('Firebase signOut error: $e');
               }
 
+              FirestoreSyncService.instance.cancelRealtimeListeners();
+              await SettingsRepository().setLastUserId(null);
+              await DatabaseHelper.instance.clearAllData();
+              if (context.mounted) {
+                context.read<ProfileImageProvider>().onLogout();
+                context.read<ExpenseProvider>().clearAllDataInMemory();
+                context.read<TravelProvider>().clearAllDataInMemory();
+              }
+
               await settings.logout();
               if (!context.mounted) return;
 
@@ -913,6 +920,125 @@ class ProfileSettingsScreen extends StatelessWidget {
               );
             },
             child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityCard(BuildContext context, AppLockProvider? appLock, bool isDark) {
+    final isEnabled = appLock?.isAppLockEnabled ?? false;
+    final securityIcon = appLock?.securityIcon ?? CupertinoIcons.lock_shield_fill;
+
+    return GlassCard(
+      isDark: isDark,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: isEnabled
+                  ? AppColors.appleGreen
+                  : (isDark ? const Color(0xFF2C2D35) : const Color(0xFFE2E4E9)),
+            ),
+            child: Center(
+              child: Icon(
+                securityIcon,
+                size: 18,
+                color: isEnabled
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : Colors.black54),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'App Lock',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isEnabled
+                            ? AppColors.appleGreen.withValues(alpha: 0.16)
+                            : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isEnabled ? 'Protected' : 'Off',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isEnabled
+                              ? AppColors.appleGreen
+                              : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  "Protect your Royal Spend app using your device's built-in security.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          CupertinoSwitch(
+            value: isEnabled,
+            activeTrackColor: AppColors.appleGreen,
+            onChanged: (val) async {
+              HapticHelper.mediumImpact();
+              if (appLock == null) return;
+              if (val) {
+                final success = await appLock.enableAppLock(context);
+                if (!success && context.mounted) {
+                  final msg = appLock.errorMessage ??
+                      'Please set up a screen lock on your device to enable App Lock.';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(msg),
+                      backgroundColor: AppColors.appleRed,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                final success = await appLock.disableAppLock(context);
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Authentication failed. App Lock remains enabled.'),
+                      backgroundColor: AppColors.appleRed,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
           ),
         ],
       ),
@@ -1407,7 +1533,7 @@ class ProfileSettingsScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   void _confirmSeedData(BuildContext context, ExpenseProvider provider) {
@@ -1467,203 +1593,6 @@ class ProfileSettingsScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showExportSheet(
-    BuildContext context,
-    ExpenseProvider provider,
-    SettingsProvider settings,
-  ) {
-    HapticHelper.mediumImpact();
-    final isDark = settings.isDarkMode(context);
-    final expenses = provider.allExpenses;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-            child: Container(
-              decoration: GlassDecorations.glassModalDecoration(isDark: isDark),
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0x4DFFFFFF) : const Color(0x33000000),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.royalIndigo.withValues(alpha: 0.18),
-                        ),
-                        child: const Icon(
-                          CupertinoIcons.arrow_up_doc_fill,
-                          color: AppColors.royalIndigoLight,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Export Transactions',
-                        style: AppTextStyles.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Export your ${expenses.length} transaction records directly to your clipboard for Excel, Google Sheets, or personal backups.',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Option 1: CSV Export
-                  LiquidPop(
-                    pressedScale: 0.97,
-                    onTap: () {
-                      HapticHelper.lightImpact();
-                      Navigator.pop(ctx);
-                      final buffer = StringBuffer();
-                      buffer.writeln('Date,Time,Title,Category,Amount,Type,Payment Method,Notes');
-                      for (final e in expenses) {
-                        final cleanTitle = e.title.replaceAll('"', '""');
-                        final cleanNotes = (e.notes ?? '').replaceAll('"', '""');
-                        buffer.writeln(
-                          '${DateFormatter.formatDate(e.date)},${DateFormatter.formatTime(e.date)},"$cleanTitle",${e.category.name},${e.amount.toStringAsFixed(2)},${e.isIncome ? "Income" : "Expense"},${e.paymentMethod.displayName},"$cleanNotes"',
-                        );
-                      }
-                      Clipboard.setData(ClipboardData(text: buffer.toString()));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Copied ${expenses.length} transactions as CSV to clipboard!'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: GlassDecorations.glassTileDecoration(isDark: isDark),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.vividMint.withValues(alpha: 0.15),
-                            ),
-                            child: const Icon(CupertinoIcons.table, color: AppColors.vividMint, size: 20),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Copy as CSV Spreadsheet',
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Standard comma-separated format for Excel & Numbers',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(CupertinoIcons.doc_on_clipboard, size: 18, color: AppColors.vividMint),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Option 2: JSON Export
-                  LiquidPop(
-                    pressedScale: 0.97,
-                    onTap: () {
-                      HapticHelper.lightImpact();
-                      Navigator.pop(ctx);
-                      final jsonList = expenses.map((e) => e.toMap()).toList();
-                      final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
-                      Clipboard.setData(ClipboardData(text: jsonString));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Copied ${expenses.length} transactions as JSON to clipboard!'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: GlassDecorations.glassTileDecoration(isDark: isDark),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.electricCyan.withValues(alpha: 0.15),
-                            ),
-                            child: const Icon(CupertinoIcons.chevron_left_slash_chevron_right, color: AppColors.electricCyan, size: 20),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Copy as JSON Backup',
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Structured data format for developers and database backups',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(CupertinoIcons.doc_on_clipboard, size: 18, color: AppColors.electricCyan),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

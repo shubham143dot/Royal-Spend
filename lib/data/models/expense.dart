@@ -1,6 +1,27 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import '../../core/constants/default_categories.dart';
 import 'expense_category.dart';
+
+enum ExpenseSyncStatus {
+  pending,
+  syncing,
+  synced,
+  failed;
+
+  String get displayName {
+    switch (this) {
+      case ExpenseSyncStatus.pending:
+        return 'Pending Sync';
+      case ExpenseSyncStatus.syncing:
+        return 'Syncing...';
+      case ExpenseSyncStatus.synced:
+        return 'Synced';
+      case ExpenseSyncStatus.failed:
+        return 'Sync Failed';
+    }
+  }
+}
 
 enum PaymentMethod {
   upi,
@@ -57,6 +78,21 @@ class Expense {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// User account UID (Firebase auth UID) for multi-account isolation.
+  final String? userId;
+
+  /// Offline synchronization state.
+  final ExpenseSyncStatus syncStatus;
+
+  /// Local on-device persistent path to the receipt image.
+  final String? receiptPath;
+
+  /// Cloud Storage URL after synchronization.
+  final String? cloudImageUrl;
+
+  /// Extracted on-device OCR metadata (subtotal, GST breakdown, invoice number, etc.).
+  final Map<String, dynamic>? ocrData;
+
   Expense({
     required this.id,
     required this.title,
@@ -69,6 +105,11 @@ class Expense {
     this.tripId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.userId,
+    this.syncStatus = ExpenseSyncStatus.synced,
+    this.receiptPath,
+    this.cloudImageUrl,
+    this.ocrData,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -86,6 +127,11 @@ class Expense {
     String? tripId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? userId,
+    ExpenseSyncStatus? syncStatus,
+    String? receiptPath,
+    String? cloudImageUrl,
+    Map<String, dynamic>? ocrData,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -99,6 +145,11 @@ class Expense {
       tripId: tripId ?? this.tripId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      userId: userId ?? this.userId,
+      syncStatus: syncStatus ?? this.syncStatus,
+      receiptPath: receiptPath ?? this.receiptPath,
+      cloudImageUrl: cloudImageUrl ?? this.cloudImageUrl,
+      ocrData: ocrData ?? this.ocrData,
     );
   }
 
@@ -115,6 +166,11 @@ class Expense {
       'trip_id': tripId,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
+      'user_id': userId,
+      'sync_status': syncStatus.name,
+      'receipt_path': receiptPath,
+      'cloud_image_url': cloudImageUrl,
+      'ocr_data': ocrData != null ? jsonEncode(ocrData) : null,
     };
   }
 
@@ -140,6 +196,19 @@ class Expense {
       return false;
     }
 
+    Map<String, dynamic>? parseOcrData(dynamic val) {
+      if (val == null) return null;
+      if (val is Map<String, dynamic>) return val;
+      if (val is Map) return Map<String, dynamic>.from(val);
+      if (val is String && val.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(val);
+          if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        } catch (_) {}
+      }
+      return null;
+    }
+
     return Expense(
       id: map['id']?.toString() ?? '',
       title: map['title']?.toString() ?? 'Expense',
@@ -155,6 +224,14 @@ class Expense {
       tripId: map['trip_id'] as String?,
       createdAt: parseDate(map['created_at']),
       updatedAt: parseDate(map['updated_at']),
+      userId: map['user_id'] as String?,
+      syncStatus: ExpenseSyncStatus.values.firstWhere(
+        (s) => s.name == map['sync_status'],
+        orElse: () => ExpenseSyncStatus.synced,
+      ),
+      receiptPath: map['receipt_path'] as String?,
+      cloudImageUrl: map['cloud_image_url'] as String?,
+      ocrData: parseOcrData(map['ocr_data']),
     );
   }
 }

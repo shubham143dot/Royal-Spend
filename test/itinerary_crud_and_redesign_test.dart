@@ -15,6 +15,7 @@ import 'package:royal_spend/providers/travel_provider.dart';
 import 'package:royal_spend/ui/widgets/travel/add_edit_activity_sheet.dart';
 import 'package:royal_spend/ui/widgets/travel/add_edit_day_sheet.dart';
 import 'package:royal_spend/ui/widgets/travel/itinerary_timeline_view.dart';
+import 'package:royal_spend/ui/widgets/travel/set_starting_point_sheet.dart';
 
 class MockTravelRepository implements ITravelRepository {
   final Map<String, Trip> trips = {};
@@ -186,6 +187,77 @@ void main() {
       expect(reconstructed.bookingStatus, equals(BookingStatus.booked));
     });
 
+    test('ItineraryDay model handles starting point and end point fields correctly', () {
+      final day = ItineraryDay(
+        id: 'day_sp_test',
+        tripId: 'trip_1',
+        dayNumber: 1,
+        date: DateTime(2026, 12, 1),
+        title: 'Munnar Arrival',
+        startPlaceName: 'Tea County Resort',
+        startAddress: 'Bison Valley Road',
+        startTime: '08:30 AM',
+        startNotes: 'Check out at 10 AM, luggage store at front desk',
+        startType: 'hotel',
+        endPlaceName: 'Return to Tea County Resort',
+        endTime: '07:30 PM',
+      );
+
+      expect(day.hasStartingPoint, isTrue);
+      expect(day.hasEndPoint, isTrue);
+
+      final map = day.toMap();
+      expect(map['start_place_name'], equals('Tea County Resort'));
+      expect(map['start_address'], equals('Bison Valley Road'));
+      expect(map['start_time'], equals('08:30 AM'));
+      expect(map['start_notes'], contains('luggage store'));
+      expect(map['start_type'], equals('hotel'));
+      expect(map['end_place_name'], equals('Return to Tea County Resort'));
+      expect(map['end_time'], equals('07:30 PM'));
+
+      final reconstructed = ItineraryDay.fromMap(map);
+      expect(reconstructed.id, equals('day_sp_test'));
+      expect(reconstructed.startPlaceName, equals('Tea County Resort'));
+      expect(reconstructed.startTime, equals('08:30 AM'));
+      expect(reconstructed.hasStartingPoint, isTrue);
+      expect(reconstructed.endPlaceName, equals('Return to Tea County Resort'));
+    });
+
+    test('Set, Update, and Clear Starting Point in TravelProvider', () async {
+      final trip = Trip(
+        id: 'kerala_sp_trip',
+        title: 'Kerala Vacation',
+        destination: 'Kerala',
+        startDate: DateTime(2026, 12, 1),
+        endDate: DateTime(2026, 12, 3),
+      );
+
+      await provider.createTrip(trip);
+      await provider.selectTrip('kerala_sp_trip');
+
+      final day1 = provider.currentDays.first;
+      expect(day1.hasStartingPoint, isFalse);
+
+      // Set starting point
+      await provider.updateDayStartingPoint(
+        day1.id,
+        placeName: 'Grand Hyatt Kochi',
+        address: 'Bolgatty Island',
+        time: '09:00 AM',
+        notes: 'Breakfast at 8 AM',
+        type: 'hotel',
+      );
+
+      expect(provider.selectedDay!.hasStartingPoint, isTrue);
+      expect(provider.selectedDay!.startPlaceName, equals('Grand Hyatt Kochi'));
+      expect(provider.selectedDay!.startTime, equals('09:00 AM'));
+
+      // Clear starting point
+      await provider.clearDayStartingPoint(day1.id);
+      expect(provider.selectedDay!.hasStartingPoint, isFalse);
+      expect(provider.selectedDay!.startPlaceName, isNull);
+    });
+
     test('Add, Edit, Delete Day flow works in TravelProvider', () async {
       final trip = Trip(
         id: 'test_trip_1',
@@ -341,9 +413,111 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Day 1 Itinerary'), findsOneWidget);
-      expect(find.text('The Ridge & Mall Road'), findsOneWidget);
+      expect(find.text('The Ridge & Mall Road'), findsWidgets);
       expect(find.text('04:00 PM'), findsOneWidget);
       expect(find.text('Sightseeing'), findsOneWidget);
+      expect(find.text('Starting Point'), findsOneWidget);
+    });
+
+    testWidgets('ItineraryTimelineView renders Starting Point hub when configured',
+        (tester) async {
+      final repository = MockTravelRepository();
+      final provider = TravelProvider(repository: repository);
+
+      final trip = Trip(
+        id: 'darjeeling_trip',
+        title: 'Darjeeling Vacation',
+        destination: 'Darjeeling',
+        startDate: DateTime(2026, 12, 10),
+        endDate: DateTime(2026, 12, 12),
+      );
+
+      await provider.createTrip(trip);
+      await provider.selectTrip('darjeeling_trip');
+      final day1 = provider.currentDays.first.copyWith(
+        startPlaceName: 'Mayfair Tea Resort',
+        startTime: '08:30 AM',
+        startAddress: 'Promenade Road',
+        startType: 'hotel',
+      );
+      await provider.updateDay(day1);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChangeNotifierProvider<TravelProvider>.value(
+            value: provider,
+            child: Scaffold(
+              body: ItineraryTimelineView(
+                day: provider.selectedDay!,
+                isDark: false,
+                onAddStop: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('STARTING POINT'), findsWidgets);
+      expect(find.text('Mayfair Tea Resort'), findsWidgets);
+      expect(find.text('Departs: 08:30 AM'), findsOneWidget);
+    });
+
+    testWidgets('SetStartingPointSheet renders and saves starting point',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final repository = MockTravelRepository();
+      final provider = TravelProvider(repository: repository);
+
+      final day = ItineraryDay(
+        id: 'day_sheet_test',
+        tripId: 'trip_1',
+        dayNumber: 1,
+        date: DateTime(2026, 11, 20),
+      );
+
+      ItineraryDay? savedDay;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChangeNotifierProvider<TravelProvider>.value(
+            value: provider,
+            child: Scaffold(
+              body: SetStartingPointSheet(
+                day: day,
+                isDark: false,
+                onSave: (updated) {
+                  savedDay = updated;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set Starting Point'), findsWidgets);
+      expect(find.text('Hotel / Stay'), findsOneWidget);
+      expect(find.text('Airport'), findsOneWidget);
+
+      // Enter starting point name
+      await tester.enterText(
+          find.byType(TextFormField).first,
+          'Grand Palace Hotel');
+      await tester.pumpAndSettle();
+
+      // Tap Save
+      await tester.tap(find.text('Set Starting Point').last);
+      await tester.pumpAndSettle();
+
+      expect(savedDay, isNotNull);
+      expect(savedDay!.startPlaceName, equals('Grand Palace Hotel'));
     });
 
     testWidgets('AddEditDaySheet renders fields and has Delete Day when editing',

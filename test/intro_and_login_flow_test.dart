@@ -7,11 +7,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 // ignore: depend_on_referenced_packages
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-import 'package:royal_spend/core/constants/app_constants.dart';
 import 'package:royal_spend/core/services/auth/royal_auth_gateway.dart';
 import 'package:royal_spend/core/theme/app_theme.dart';
 import 'package:royal_spend/data/repositories/settings_repository.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
+import 'package:royal_spend/providers/profile_image_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
@@ -162,6 +162,7 @@ void main() {
         ChangeNotifierProvider.value(value: expenseProvider),
         ChangeNotifierProvider.value(value: quickLogProvider),
         ChangeNotifierProvider.value(value: travelProvider),
+        ChangeNotifierProvider(create: (_) => ProfileImageProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -266,10 +267,8 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.byType(GoogleBrandIcon), findsOneWidget);
 
-      // Verify Development Skip bypass exists when enabled
-      if (AppConstants.enableDevAuthBypass) {
-        expect(find.text('Skip for now'), findsOneWidget);
-      }
+      // Verify Skip for now bypass button is completely removed
+      expect(find.text('Skip for now'), findsNothing);
 
       // Verify Privacy & Terms notice
       expect(
@@ -437,7 +436,7 @@ void main() {
       },
     );
 
-    testWidgets('tapping Skip for now marks intro completed and navigates', (
+    testWidgets('verifies Skip for now button is completely absent from login', (
       tester,
     ) async {
       final settingsRepo = SettingsRepository();
@@ -450,12 +449,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pump(const Duration(milliseconds: 700));
 
-      await tester.ensureVisible(find.text('Skip for now'));
-      await tester.tap(find.text('Skip for now'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 700));
-
-      expect(settingsProv.hasCompletedIntro, isTrue);
+      expect(find.text('Skip for now'), findsNothing);
     });
   });
 

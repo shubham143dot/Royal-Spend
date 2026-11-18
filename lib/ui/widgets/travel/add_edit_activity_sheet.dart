@@ -10,11 +10,13 @@ import '../../../data/models/itinerary_activity.dart';
 import '../glass_button.dart';
 import '../glass_text_field.dart';
 import '../liquid_pop.dart';
+import '../maps/places_autocomplete_dialog.dart';
 
 class AddEditActivitySheet extends StatefulWidget {
   final String tripId;
   final String dayId;
   final ItineraryActivity? activityToEdit;
+  final int? stopNumber;
   final bool isDark;
   final ValueChanged<ItineraryActivity> onSave;
   final VoidCallback? onDelete;
@@ -24,6 +26,7 @@ class AddEditActivitySheet extends StatefulWidget {
     required this.tripId,
     required this.dayId,
     this.activityToEdit,
+    this.stopNumber,
     required this.isDark,
     required this.onSave,
     this.onDelete,
@@ -34,6 +37,7 @@ class AddEditActivitySheet extends StatefulWidget {
     required String tripId,
     required String dayId,
     ItineraryActivity? activityToEdit,
+    int? stopNumber,
     required bool isDark,
     required ValueChanged<ItineraryActivity> onSave,
     VoidCallback? onDelete,
@@ -53,6 +57,7 @@ class AddEditActivitySheet extends StatefulWidget {
         tripId: tripId,
         dayId: dayId,
         activityToEdit: activityToEdit,
+        stopNumber: stopNumber,
         isDark: isDark,
         onSave: onSave,
         onDelete: onDelete,
@@ -78,6 +83,9 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
 
   late ActivityCategory _selectedCategory;
   late BookingStatus _selectedBookingStatus;
+  double? _latitude;
+  double? _longitude;
+  String? _placeId;
 
   final List<String> _quickDurations = [
     '30m',
@@ -99,6 +107,9 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
     _titleController = TextEditingController(text: a?.title ?? '');
     _startTimeController = TextEditingController(text: a?.startTime ?? '');
     _endTimeController = TextEditingController(text: a?.endTime ?? '');
+    _latitude = a?.latitude;
+    _longitude = a?.longitude;
+    _placeId = a?.placeId;
 
     String durationText = '';
     if (a?.durationMinutes != null && a!.durationMinutes! > 0) {
@@ -187,6 +198,46 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
     return null;
   }
 
+  ActivityCategory _resolveCategory(String bestCat) {
+    switch (bestCat) {
+      case 'Restaurants':
+      case 'Cafes':
+        return ActivityCategory.meal;
+      case 'Hotels':
+        return ActivityCategory.accommodation;
+      case 'Shopping':
+        return ActivityCategory.shopping;
+      case 'Tourist Attractions':
+      default:
+        return ActivityCategory.sightseeing;
+    }
+  }
+
+  Future<void> _searchGooglePlaces() async {
+    final details = await PlacesAutocompleteDialog.show(
+      context,
+      title: widget.stopNumber != null
+          ? 'Stop ${widget.stopNumber} Location'
+          : 'Search Stop Location',
+      hintText: 'Search attractions, restaurants, viewpoints...',
+      isDark: widget.isDark,
+    );
+
+    if (details != null && mounted) {
+      setState(() {
+        _placeController.text = details.name;
+        _locationController.text = details.formattedAddress;
+        if (_titleController.text.trim().isEmpty) {
+          _titleController.text = details.name;
+        }
+        _latitude = details.latitude;
+        _longitude = details.longitude;
+        _placeId = details.id;
+        _selectedCategory = _resolveCategory(details.bestCategory);
+      });
+    }
+  }
+
   void _handleSave() {
     if (!_formKey.currentState!.validate()) {
       HapticHelper.heavyImpact();
@@ -212,6 +263,9 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
       title: title,
       placeName: placeName.isNotEmpty ? placeName : title,
       address: location.isNotEmpty ? location : null,
+      latitude: _latitude,
+      longitude: _longitude,
+      placeId: _placeId,
       startTime: _startTimeController.text.trim().isNotEmpty
           ? _startTimeController.text.trim()
           : null,
@@ -273,16 +327,58 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      isEditing ? 'Edit Itinerary Stop' : 'Add Stop to Day',
-                      style: AppTextStyles.titleMedium.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.lightTextPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              isEditing
+                                  ? (widget.stopNumber != null
+                                      ? 'Edit Stop ${widget.stopNumber}'
+                                      : 'Edit Itinerary Stop')
+                                  : (widget.stopNumber != null
+                                      ? 'Add Stop ${widget.stopNumber}'
+                                      : 'Add Stop to Day'),
+                              style: AppTextStyles.titleMedium.copyWith(
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (widget.stopNumber != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (isDark
+                                        ? AppColors.appleBlue
+                                        : AppColors.royalIndigo)
+                                    .withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'STOP ${widget.stopNumber}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark
+                                      ? AppColors.appleBlue
+                                      : AppColors.royalIndigo,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     LiquidPop(
                       pressedScale: 0.90,
                       onTap: () => Navigator.pop(context),
@@ -296,7 +392,80 @@ class _AddEditActivitySheetState extends State<AddEditActivitySheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
+
+                // Google Places Autocomplete Action
+                LiquidPop(
+                  onTap: _searchGooglePlaces,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                          .withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                            .withValues(alpha: 0.35),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.search,
+                          size: 16,
+                          color: isDark
+                              ? AppColors.appleBlue
+                              : AppColors.royalIndigo,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _placeController.text.isNotEmpty
+                                ? 'Selected: ${_placeController.text}'
+                                : 'Search location on Google Places',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.appleBlue
+                                  : AppColors.royalIndigo,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_latitude != null && _longitude != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.appleGreen.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'GPS Verified',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.appleGreen,
+                              ),
+                            ),
+                          )
+                        else
+                          Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 13,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.lightTextMuted,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
 
                 // Title / Stop Name Field
                 GlassTextField(

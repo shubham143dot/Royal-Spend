@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy – Royal Spend: Expense Tracker & Travel Planner</title>
+  <meta name="description" content="Official Privacy Policy for Royal Spend – Expense Tracker & Travel Planner by Royal Shubham Pixel Labs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0A0C10;
+      --bg-surface: #14171F;
+      --bg-card: rgba(25, 29, 39, 0.75);
+      --border-color: rgba(255, 215, 0, 0.18);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --gold-primary: #FFD700;
+      --gold-secondary: #F5B82E;
+      --gold-gradient: linear-gradient(135deg, #FFD700 0%, #F5B82E 50%, #E88A00 100%);
+      --accent-green: #34D399;
+      --accent-blue: #38BDF8;
+      --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      padding: 0;
+      margin: 0;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(245, 184, 46, 0.12) 0%, rgba(10, 12, 16, 0) 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px 80px 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 215, 0, 0.10);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      color: var(--gold-primary);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .meta-box {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-item strong {
+      color: var(--text-secondary);
+    }
+
+    section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 32px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    section:hover {
+      border-color: var(--border-color);
+      transition: border-color 0.3s ease;
+    }
+
+    h2 {
+      font-size: 21px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 215, 0, 0.15);
+      border: 1px solid rgba(255, 215, 0, 0.30);
+      color: var(--gold-primary);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gold-secondary);
+      margin-top: 24px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 14px;
+      color: #E2E8F0;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      color: #CBD5E1;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    strong {
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--gold-primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .callout {
+      background: rgba(255, 215, 0, 0.08);
+      border-left: 4px solid var(--gold-primary);
+      padding: 18px 22px;
+      border-radius: 12px;
+      margin: 20px 0;
+      color: #F1F5F9;
+      font-size: 15px;
+    }
+
+    .callout-green {
+      background: rgba(52, 211, 153, 0.08);
+      border-left: 4px solid var(--accent-green);
+    }
+
+    .callout-blue {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      text-align: left;
+      min-width: 600px;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--gold-primary);
+      padding: 14px 18px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #CBD5E1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 36px;
+      color: var(--text-muted);
+      font-size: 14px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    footer p {
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 32px 16px 60px 16px;
+      }
+      section {
+        padding: 24px 18px;
+        border-radius: 16px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      .subtitle {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">Official Legal Document</div>
+      <h1>Privacy Policy</h1>
+      <div class="subtitle">Royal Spend – Expense Tracker & Travel Planner</div>
+      <div class="meta-box">
+        <div class="meta-item"><strong>Last Updated:</strong> November 18, 2026</div>
+        <div class="meta-item">•</div>
+        <div class="meta-item"><strong>Effective Date:</strong> November 18, 2026</div>
+        <div class="meta-item">•</div>
+        <div class="meta-item"><strong>Publisher:</strong> Royal Shubham Pixel Labs</div>
+      </div>
+    </header>
+
+    <div class="callout callout-green">
+      <strong>Privacy-by-Design Guarantee:</strong> Royal Spend is built with an offline-first architecture. We do <strong>NOT</strong> sell your personal data, we do <strong>NOT</strong> display third-party advertisements, and we do <strong>NOT</strong> share your financial records with data brokers.
+    </div>
+
+    <!-- Section 1 -->
+    <section>
+      <h2><span class="num">1</span> Overview & Scope</h2>
+      <p>This Privacy Policy explains how <strong>Royal Shubham Pixel Labs</strong> (“we”, “our”, or “us”) collects, uses, stores, and protects your information when you access or use the <strong>Royal Spend</strong> mobile application on Android and iOS devices (the “App”).</p>
+      <p>By downloading, installing, or using Royal Spend, you acknowledge and agree to the collection and handling of information as described in this Privacy Policy. If you do not agree, please discontinue using the application.</p>
+    </section>
+
+    <!-- Section 2 -->
+    <section>
+      <h2><span class="num">2</span> Nature of the Application (Financial Services Clarification)</h2>
+      <p>In adherence to Google Play Store Financial Services Policies:</p>
+      <ul>
+        <li><strong>Personal Budgeting Utility:</strong> Royal Spend is strictly a personal finance tracking and travel planning utility designed to help users manually record and analyze their personal expenditures.</li>
+        <li><strong>No Banking / Credit Services:</strong> The App does <strong>NOT</strong> provide loans, credit lines, investment advisory, banking facilities, or money lending services.</li>
+        <li><strong>No Direct Bank Access:</strong> The App does <strong>NOT</strong> connect to or scrape your bank accounts or credit card portals via financial aggregators. All entries are managed directly by you.</li>
+        <li><strong>No Payment Processing:</strong> Royal Spend does not process financial payments, monetary transfers, or real-money transactions. Group bill split calculations are mathematical tracking ledgers for personal convenience.</li>
+      </ul>
+    </section>
+
+    <!-- Section 3 -->
+    <section>
+      <h2><span class="num">3</span> Information We Collect</h2>
+      <p>We collect only the minimum data strictly necessary to provide expense management, budgeting analytics, and travel itinerary coordination.</p>
+
+      <h3>A. Personal & Account Information</h3>
+      <ul>
+        <li><strong>Authentication:</strong> When signing in with Email & Password or Google Sign-In, we collect your email address, display name, and unique authentication identifier via <strong>Google Firebase Authentication</strong>.</li>
+        <li><strong>Profile Customization:</strong> Optional user display name, preferred currency code (e.g., INR ₹, USD $, EUR €), and custom profile avatar.</li>
+        <li><strong>Offline / Local Mode:</strong> If used without cloud sign-in, all data remains exclusively on your device's local database.</li>
+      </ul>
+
+      <h3>B. Financial & Expenditure Records</h3>
+      <ul>
+        <li>Transaction amounts, timestamps, payment modes (Cash, UPI, Credit/Debit Card, Net Banking), expenditure categories, merchant names, tags, and transaction notes.</li>
+        <li>Monthly budget allocations, category caps, and quick-log presets.</li>
+      </ul>
+
+      <h3>C. Travel Planner & Itinerary Data</h3>
+      <ul>
+        <li>Trip titles, destinations, origin cities, start/end dates, and estimated travel budgets.</li>
+        <li>Daily itineraries: activity titles, departure hubs, scheduled departure/arrival times, estimated activity costs, booking statuses, confirmation notes.</li>
+        <li>Saved places, landmarks, and geographic coordinates (latitude and longitude) that you explicitly search, save, or pin to an itinerary.</li>
+        <li>Transit itineraries (flight, train, bus) and hotel/stay check-in/out records.</li>
+        <li>Group expense splits and simplified bilateral settlement calculations.</li>
+      </ul>
+
+      <h3>D. Biometric & Device App Lock Data</h3>
+      <div class="callout callout-blue">
+        <strong>Absolute Biometric Privacy Guarantee:</strong> Royal Spend uses native device security (Fingerprint, Face ID, Device PIN/Passcode). The App <strong>NEVER</strong> collects, stores, reads, or transmits your fingerprint vectors, facial geometries, or device passwords. Biometric verification is executed inside your device's hardware Secure Enclave / TEE, and the App only receives a binary success/failure status.
+      </div>
+    </section>
+
+    <!-- Section 4 -->
+    <section>
+      <h2><span class="num">4</span> Google Play Data Safety Summary</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Data Type</th>
+              <th>Collected?</th>
+              <th>Shared?</th>
+              <th>Purpose</th>
+              <th>Handling & Security</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Name & Email Address</strong></td>
+              <td>Yes (Optional via login)</td>
+              <td>No</td>
+              <td>Account authentication</td>
+              <td>Encrypted in transit (TLS 1.3), user deletable</td>
+            </tr>
+            <tr>
+              <td><strong>Financial Info (Expenses, Budgets)</strong></td>
+              <td>Yes (User-entered)</td>
+              <td>No</td>
+              <td>App functionality, analytics</td>
+              <td>Encrypted in transit & at rest, user deletable</td>
+            </tr>
+            <tr>
+              <td><strong>Travel & Itinerary Data</strong></td>
+              <td>Yes (User-entered)</td>
+              <td>No</td>
+              <td>App functionality, itineraries</td>
+              <td>Encrypted in transit & at rest, user deletable</td>
+            </tr>
+            <tr>
+              <td><strong>Approximate / Precise Location</strong></td>
+              <td>Only user-pinned place coordinates</td>
+              <td>No</td>
+              <td>Map route display</td>
+              <td>Encrypted in transit & at rest, user deletable</td>
+            </tr>
+            <tr>
+              <td><strong>Photos / Profile Images</strong></td>
+              <td>Yes (Optional avatar only)</td>
+              <td>No</td>
+              <td>Profile personalization</td>
+              <td>Encrypted in transit & at rest, user deletable</td>
+            </tr>
+            <tr>
+              <td><strong>Biometric Information</strong></td>
+              <td><strong>NO</strong></td>
+              <td><strong>NO</strong></td>
+              <td>Handled 100% by OS TEE</td>
+              <td>Never accessed, collected, or stored</td>
+            </tr>
+            <tr>
+              <td><strong>Device Identifiers / Ad IDs</strong></td>
+              <td><strong>NO</strong></td>
+              <td><strong>NO</strong></td>
+              <td>No advertising IDs used</td>
+              <td>Not collected</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5 -->
+    <section>
+      <h2><span class="num">5</span> Third-Party Services</h2>
+      <p>Royal Spend integrates with trusted, industry-leading enterprise providers:</p>
+      <ul>
+        <li><strong>Google Firebase Authentication:</strong> Secure user identity & token authentication.</li>
+        <li><strong>Google Cloud Firestore:</strong> Encrypted multi-device database synchronization.</li>
+        <li><strong>Google Firebase Storage:</strong> Encrypted user avatar photo storage.</li>
+        <li><strong>Google Maps Platform:</strong> Interactive travel maps and route viewing.</li>
+        <li><strong>Google Play Services:</strong> Core Android runtime libraries and app distribution.</li>
+      </ul>
+      <p><em>Notice: Royal Spend contains NO third-party advertising SDKs (such as AdMob), NO cross-app tracking libraries, and NO marketing data aggregators.</em></p>
+    </section>
+
+    <!-- Section 6 -->
+    <section>
+      <h2><span class="num">6</span> Device Permissions & Purpose Justification</h2>
+      <ul>
+        <li><strong>Photos & Media (`READ_MEDIA_IMAGES` / `NSPhotoLibraryUsageDescription`):</strong> Used exclusively if you choose to select a custom profile avatar photo from your gallery.</li>
+        <li><strong>Biometrics (`USE_BIOMETRIC`, `NSFaceIDUsageDescription`):</strong> Used exclusively to unlock the app when App Lock is activated.</li>
+        <li><strong>Network & Internet (`INTERNET`, `ACCESS_NETWORK_STATE`):</strong> Used to synchronize data with Firebase and stream Google Maps tiles.</li>
+      </ul>
+      <p>You can adjust or revoke these permissions at any time via your device's operating system settings.</p>
+    </section>
+
+    <!-- Section 7 -->
+    <section>
+      <h2><span class="num">7</span> Data Security & Storage</h2>
+      <ul>
+        <li><strong>Local Sandboxing:</strong> Stored locally in a private SQLite database (`royal_spend.db`) inaccessible to other apps.</li>
+        <li><strong>Encryption in Transit:</strong> All communications with Firebase use Transport Layer Security (<strong>HTTPS / TLS 1.3</strong>).</li>
+        <li><strong>Encryption at Rest:</strong> Cloud Firestore encrypts all synchronized data with 256-bit AES encryption.</li>
+        <li><strong>Strict Access Rules:</strong> Firestore security rules guarantee that each authenticated user can only access their own documents (`/users/{uid}/*`).</li>
+        <li><strong>Zero Data Selling:</strong> We never sell, monetize, or lease your financial information to anyone.</li>
+      </ul>
+    </section>
+
+    <!-- Section 8 -->
+    <section>
+      <h2><span class="num">8</span> Data Retention & Account Deletion Policy</h2>
+      <p>In accordance with Google Play Store standards, you have full ownership and deletion rights over your data:</p>
+      <ul>
+        <li><strong>In-App Clear Data:</strong> Reset and purge local database records directly inside the application settings (<strong>Settings > Clear All Expenses</strong>).</li>
+        <li><strong>Permanent Account & Cloud Data Deletion:</strong> You can request permanent erasure of your account, authentication credentials, and all synchronized cloud records at any time by emailing us at <a href="mailto:royalshubhampixellabs@gmail.com">royalshubhampixellabs@gmail.com</a> with the subject line <em>"Delete My Royal Spend Account"</em>. All associated data will be permanently deleted from our servers within thirty (30) days.</li>
+      </ul>
+    </section>
+
+    <!-- Section 9 -->
+    <section>
+      <h2><span class="num">9</span> Global Privacy Rights (GDPR, CCPA & India DPDP)</h2>
+      <ul>
+        <li><strong>GDPR / UK GDPR:</strong> Residents of the EEA and UK possess rights to access (Art. 15), rectify (Art. 16), erase (Art. 17), restrict processing (Art. 18), and export data (Art. 20).</li>
+        <li><strong>CCPA / CPRA:</strong> California residents have the right to know what personal data is collected and request its deletion. We do <strong>not</strong> sell or share personal information for behavioral advertising.</li>
+        <li><strong>India DPDP Act (2023):</strong> Users in India have the right to consent-based processing, data correction, erasure, and grievance redressal.</li>
+      </ul>
+    </section>
+
+    <!-- Section 10 -->
+    <section>
+      <h2><span class="num">10</span> Children's Privacy</h2>
+      <p>Royal Spend is designed for general audiences and is <strong>not directed to children under the age of 13</strong> (or under 16 in the EEA). We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us immediately to have it purged.</p>
+    </section>
+
+    <!-- Section 11 -->
+    <section>
+      <h2><span class="num">11</span> Contact & Grievance Redressal</h2>
+      <p>For questions, privacy inquiries, data deletion requests, or security feedback, please contact our Data Privacy Team:</p>
+      <div class="callout">
+        <strong>Royal Shubham Pixel Labs</strong><br>
+        📧 Support & Privacy: <a href="mailto:royalshubhampixellabs@gmail.com">royalshubhampixellabs@gmail.com</a><br>
+        📧 Administration: <a href="mailto:subhamsoudeep@gmail.com">subhamsoudeep@gmail.com</a>
+      </div>
+    </section>
+
+    <footer>
+      <p>© 2026 Royal Shubham Pixel Labs. All rights reserved.</p>
+      <p>Royal Spend – Expense Tracker & Travel Planner</p>
+    </footer>
+  </div>
+
+</body>
+</html>

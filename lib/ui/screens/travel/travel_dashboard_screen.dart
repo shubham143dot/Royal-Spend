@@ -4,13 +4,19 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../../data/models/trip.dart';
+import '../../../providers/expense_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../providers/travel_provider.dart';
 import '../../widgets/ambient_background.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/liquid_pop.dart';
+import '../../widgets/stat_badge.dart';
+import '../../widgets/transaction_detail_modal.dart';
+import '../../widgets/transaction_tile.dart';
 import '../../widgets/travel/trip_card.dart';
 import 'create_plan_wizard_screen.dart';
 import 'trip_workspace_screen.dart';
@@ -55,8 +61,30 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isDark = settings.isDarkMode(context);
+    final currency = settings.currencySymbol;
     final travelProvider = context.watch<TravelProvider>();
+    final expenseProvider = context.watch<ExpenseProvider>();
+
+    if (travelProvider.isAdmin != settings.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) travelProvider.setAdminStatus(settings.isAdmin);
+      });
+    }
     final trips = travelProvider.filteredTrips;
+
+    // Travel financial data
+    final allTravelExpenses = expenseProvider.allExpenses
+        .where((e) => !e.isIncome && e.tripId != null && e.tripId!.isNotEmpty)
+        .toList();
+    final totalTravelSpent =
+        allTravelExpenses.fold(0.0, (sum, e) => sum + e.amount);
+    final recentTravelExpenses = allTravelExpenses.take(4).toList();
+
+    // Active or upcoming trip for spotlight
+    final activeTrip = trips
+            .where((t) => t.isActiveNow || t.status == TripStatus.inProgress)
+            .firstOrNull ??
+        trips.where((t) => t.status == TripStatus.upcoming).firstOrNull;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -75,34 +103,101 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Top Header: App Brand & Subtitle
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Your Adventures',
-                            style: AppTextStyles.titleLarge.copyWith(
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.lightTextPrimary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 26,
-                              letterSpacing: -0.5,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Travel Hub',
+                                  style: AppTextStyles.titleLarge.copyWith(
+                                    color: isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.lightTextPrimary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 26,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Explore, schedule, and track trips effortlessly.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.lightTextSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Every journey, beautifully planned.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.lightTextSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          StatBadge(
+                            label: '${trips.length} Plans',
+                            icon: CupertinoIcons.airplane,
+                            color: isDark
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF0D9488),
+                            isDark: isDark,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
+
+                      // Travel Overview Stats Card
+                      GlassCard(
+                        isDark: isDark,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildQuickStatItem(
+                              'Travel Spent',
+                              CurrencyFormatter.format(totalTravelSpent,
+                                  symbol: currency),
+                              CupertinoIcons.creditcard,
+                              isDark,
+                            ),
+                            Container(
+                              height: 30,
+                              width: 0.8,
+                              color: isDark
+                                  ? const Color(0x22FFFFFF)
+                                  : const Color(0x18000000),
+                            ),
+                            _buildQuickStatItem(
+                              'Active / Planned',
+                              '${trips.where((t) => t.status != TripStatus.completed).length}',
+                              CupertinoIcons.map_pin_ellipse,
+                              isDark,
+                            ),
+                            Container(
+                              height: 30,
+                              width: 0.8,
+                              color: isDark
+                                  ? const Color(0x22FFFFFF)
+                                  : const Color(0x18000000),
+                            ),
+                            _buildQuickStatItem(
+                              'Completed',
+                              '${trips.where((t) => t.status == TripStatus.completed).length}',
+                              CupertinoIcons.checkmark_seal_fill,
+                              isDark,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Active Trip Spotlight Card (if present)
+                      if (activeTrip != null) ...[
+                        _buildActiveTripSpotlightCard(
+                            context, activeTrip, isDark, currency),
+                      ],
 
                       // Prominent "+ Create New Plan" Banner Button
                       LiquidPop(
@@ -133,7 +228,7 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                               ),
                               SizedBox(width: 8),
                               Text(
-                                '+ Create New Plan',
+                                '+ Plan New Adventure',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -240,6 +335,24 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                 ),
               ),
 
+              // Section Header: Planned Journeys
+              if (trips.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22.0, 10.0, 22.0, 6.0),
+                    child: Text(
+                      'PLANNED JOURNEYS (${trips.length})',
+                      style: AppTextStyles.labelUppercase.copyWith(
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                        fontSize: 11,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                ),
+
               // Trips List or Empty State
               if (trips.isEmpty)
                 SliverToBoxAdapter(
@@ -336,7 +449,7 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20.0, 6.0, 20.0, 100.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -378,6 +491,256 @@ class _TravelDashboardScreenState extends State<TravelDashboardScreen> {
                     ),
                   ),
                 ),
+
+              // Recent Travel Expenses Section
+              if (recentTravelExpenses.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22.0, 24.0, 22.0, 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'RECENT TRAVEL EXPENSES (${allTravelExpenses.length})',
+                          style: AppTextStyles.labelUppercase.copyWith(
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                            fontSize: 11,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        Text(
+                          'By Date',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.lightTextMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final expense = recentTravelExpenses[index];
+                        return TransactionTile(
+                          expense: expense,
+                          currencySymbol: currency,
+                          isDark: isDark,
+                          onTap: () =>
+                              TransactionDetailModal.show(context, expense),
+                        );
+                      },
+                      childCount: recentTravelExpenses.length,
+                    ),
+                  ),
+                ),
+              ],
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStatItem(
+      String label, String value, IconData icon, bool isDark) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 15,
+            color: isDark ? const Color(0xFF10B981) : const Color(0xFF0D9488),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? AppColors.darkTextPrimary
+                    : AppColors.lightTextPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveTripSpotlightCard(
+    BuildContext context,
+    Trip trip,
+    bool isDark,
+    String currency,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: LiquidPop(
+        pressedScale: 0.98,
+        onTap: () => _openTrip(trip.id),
+        child: GlassCard(
+          isDark: isDark,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.appleGreen,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        trip.isActiveNow ? 'ACTIVE EXPEDITION' : 'NEXT ADVENTURE',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: isDark
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF0D9488),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    CupertinoIcons.chevron_right,
+                    size: 14,
+                    color: isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.lightTextMuted,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                trip.title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.lightTextPrimary,
+                  letterSpacing: -0.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.location_solid,
+                    size: 13,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      trip.destination,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('•',
+                      style: TextStyle(
+                          color: isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.lightTextMuted)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${DateFormatter.formatMedium(trip.startDate)} - ${DateFormatter.formatMedium(trip.endDate)}',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.lightTextMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Budget: ${CurrencyFormatter.format(trip.budget, symbol: currency)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isDark
+                              ? AppColors.appleBlue
+                              : AppColors.royalIndigo)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Open Workspace →',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.appleBlue
+                            : AppColors.royalIndigo,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

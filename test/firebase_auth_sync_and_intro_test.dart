@@ -12,6 +12,7 @@ import 'package:royal_spend/core/services/firestore/firestore_sync_service.dart'
 import 'package:royal_spend/core/theme/app_theme.dart';
 import 'package:royal_spend/data/repositories/settings_repository.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
+import 'package:royal_spend/providers/profile_image_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
@@ -170,6 +171,7 @@ void main() {
         ChangeNotifierProvider<ExpenseProvider>.value(value: expProv),
         ChangeNotifierProvider<QuickLogProvider>.value(value: qkProv),
         ChangeNotifierProvider<TravelProvider>.value(value: trvProv),
+        ChangeNotifierProvider<ProfileImageProvider>(create: (_) => ProfileImageProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -348,7 +350,7 @@ void main() {
   });
 
   group('Phase 4: Profile Redesign & User Avatar Tests', () {
-    testWidgets('renders ProfileSettingsScreen with avatar, camera badge, and account tiles', (
+    testWidgets('renders ProfileSettingsScreen with default Google logo avatar and account tiles', (
       tester,
     ) async {
       final repo = MemorySettingsRepository();
@@ -365,13 +367,12 @@ void main() {
 
       // Verify Settings title & Profile section exist
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.text('Test User'), findsOneWidget);
-      expect(find.byIcon(CupertinoIcons.camera_fill), findsOneWidget);
+      expect(find.text('Test User'), findsAtLeastNWidgets(1));
       expect(find.text('ACCOUNT & AUTHENTICATION'), findsOneWidget);
       expect(find.text('Log Out'), findsOneWidget);
     });
 
-    testWidgets('tapping Profile Card opens modal action sheet with photo & name options', (
+    testWidgets('tapping Edit Name opens dialog to edit display name', (
       tester,
     ) async {
       final repo = MemorySettingsRepository();
@@ -386,15 +387,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap profile card
+      // Tap profile card to open Profile Settings action sheet
       await tester.tap(find.text('Test User'));
       await tester.pumpAndSettle();
 
-      // Modal options sheet appears
-      expect(find.text('Profile Settings'), findsOneWidget);
       expect(find.text('Edit Display Name'), findsOneWidget);
-      expect(find.text('Choose Photo from Gallery'), findsOneWidget);
-      expect(find.text('Take Photo with Camera'), findsOneWidget);
+      await tester.tap(find.text('Edit Display Name'));
+      await tester.pumpAndSettle();
+
+      // Update name dialog appears directly
+      expect(find.text('Update Profile Name'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
     });
   });

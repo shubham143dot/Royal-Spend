@@ -12,6 +12,7 @@ import '../../core/utils/haptic_helper.dart';
 import '../../data/models/expense.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../widgets/expense_category_selector.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_text_field.dart';
 import '../widgets/liquid_pop.dart';
@@ -77,116 +78,128 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      LiquidPop(
-                        pressedScale: 0.90,
-                        onTap: () {
-                          HapticHelper.mediumImpact();
-                          AddEditExpenseSheet.show(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.royalGradient,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.royalIndigo.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.add,
-                            size: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      LiquidPop(
-                        pressedScale: 0.90,
-                        onTap: () {
-                          HapticHelper.selectionClick();
-                          SetBudgetSheet.show(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
-                                .withValues(alpha: isDark ? 0.20 : 0.12),
-                            border: Border.all(
-                              color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
-                                  .withValues(alpha: isDark ? 0.45 : 0.35),
-                              width: 0.9,
+                  Flexible(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        LiquidPop(
+                          pressedScale: 0.90,
+                          onTap: () {
+                            HapticHelper.mediumImpact();
+                            AddEditExpenseSheet.show(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppColors.royalGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.royalIndigo.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.add,
+                              size: 15,
+                              color: Colors.white,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                CupertinoIcons.slider_horizontal_3,
-                                size: 13,
-                                color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Budget',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                      if (expenseProvider.searchQuery.isNotEmpty ||
-                          expenseProvider.selectedCategoryId != null ||
-                          expenseProvider.dateFilter != DateFilterType.all) ...[
-                        const SizedBox(width: 8),
                         LiquidPop(
                           pressedScale: 0.90,
                           onTap: () {
                             HapticHelper.selectionClick();
-                            _searchController.clear();
-                            expenseProvider.clearFilters();
+                            SetBudgetSheet.show(context);
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
-                              color: AppColors.roseExpense.withValues(alpha: isDark ? 0.22 : 0.16),
+                              color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                                  .withValues(alpha: isDark ? 0.20 : 0.12),
                               border: Border.all(
-                                color: AppColors.roseExpense.withValues(alpha: isDark ? 0.45 : 0.35),
+                                color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                                    .withValues(alpha: isDark ? 0.45 : 0.35),
                                 width: 0.9,
                               ),
                             ),
                             child: Row(
-                              children: const [
-                                Icon(CupertinoIcons.clear_circled, size: 14, color: AppColors.roseExpense),
-                                SizedBox(width: 4),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.slider_horizontal_3,
+                                  size: 13,
+                                  color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Reset',
+                                  'Budget',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.roseExpense,
+                                    color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
+                        if (expenseProvider.searchQuery.isNotEmpty ||
+                            expenseProvider.selectedCategoryId != null ||
+                            expenseProvider.dateFilter != DateFilterType.all)
+                          LiquidPop(
+                            pressedScale: 0.90,
+                            onTap: () {
+                              HapticHelper.selectionClick();
+                              _searchController.clear();
+                              expenseProvider.clearFilters();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: AppColors.roseExpense.withValues(alpha: isDark ? 0.22 : 0.16),
+                                border: Border.all(
+                                  color: AppColors.roseExpense.withValues(alpha: isDark ? 0.45 : 0.35),
+                                  width: 0.9,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(CupertinoIcons.clear_circled, size: 14, color: AppColors.roseExpense),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Reset',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.roseExpense,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                       ],
-                    ],
+                    ),
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // 3-Option Category Selector: Personal | Travel | Mix
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+              child: ExpenseCategorySelector(isDark: isDark),
             ),
           ),
 
@@ -274,29 +287,41 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${filtered.length} ${filtered.length == 1 ? 'transaction' : 'transactions'}',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        '${filtered.length} ${filtered.length == 1 ? 'transaction' : 'transactions'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          'Total Spend: ',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                          ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Total Spend: ',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                              ),
+                            ),
+                            Text(
+                              CurrencyFormatter.format(totalSpentFiltered, symbol: currency),
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          CurrencyFormatter.format(totalSpentFiltered, symbol: currency),
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -403,13 +428,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            headerTitle,
-                            style: AppTextStyles.labelUppercase.copyWith(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          Expanded(
+                            child: Text(
+                              headerTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.labelUppercase.copyWith(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              ),
                             ),
                           ),
-                          if (dayTotal > 0)
+                          if (dayTotal > 0) ...[
+                            const SizedBox(width: 8),
                             Text(
                               CurrencyFormatter.format(dayTotal, symbol: currency),
                               style: AppTextStyles.bodySmall.copyWith(
@@ -417,6 +447,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),

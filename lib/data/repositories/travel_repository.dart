@@ -84,6 +84,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addTrip(Trip trip) async {
+    await _dbHelper.unmarkRecordAsDeleted(trip.id);
     await _dbHelper.insertTrip(trip);
     unawaited(_syncService.syncTrip(trip).catchError((_) {}));
   }
@@ -97,7 +98,7 @@ class TravelRepository implements ITravelRepository {
   @override
   Future<void> deleteTrip(String id, {bool deleteExpenses = false}) async {
     await _dbHelper.deleteTrip(id, deleteExpenses: deleteExpenses);
-    unawaited(_syncService.deleteTrip(id).catchError((_) {}));
+    unawaited(_syncService.deleteTrip(id, deleteExpenses: deleteExpenses).catchError((_) {}));
   }
 
   @override
@@ -106,6 +107,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addDay(ItineraryDay day) async {
+    await _dbHelper.unmarkRecordAsDeleted(day.id);
     await _dbHelper.insertItineraryDay(day);
     unawaited(_syncService.syncItineraryDay(day).catchError((_) {}));
   }
@@ -132,6 +134,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addActivity(ItineraryActivity activity) async {
+    await _dbHelper.unmarkRecordAsDeleted(activity.id);
     await _dbHelper.insertActivity(activity);
     unawaited(_syncService.syncItineraryActivity(activity).catchError((_) {}));
   }
@@ -162,6 +165,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addSavedPlace(SavedPlace place) async {
+    await _dbHelper.unmarkRecordAsDeleted(place.id);
     await _dbHelper.insertSavedPlace(place);
     unawaited(_syncService.syncSavedPlace(place).catchError((_) {}));
   }
@@ -184,6 +188,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addTransport(TravelTransport transport) async {
+    await _dbHelper.unmarkRecordAsDeleted(transport.id);
     await _dbHelper.insertTransport(transport);
     unawaited(_syncService.syncTransport(transport).catchError((_) {}));
   }
@@ -206,6 +211,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addAccommodation(TravelAccommodation accommodation) async {
+    await _dbHelper.unmarkRecordAsDeleted(accommodation.id);
     await _dbHelper.insertAccommodation(accommodation);
     unawaited(_syncService.syncAccommodation(accommodation).catchError((_) {}));
   }
@@ -228,6 +234,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addChecklistItem(TravelChecklistItem item) async {
+    await _dbHelper.unmarkRecordAsDeleted(item.id);
     await _dbHelper.insertChecklistItem(item);
     unawaited(_syncService.syncChecklistItem(item).catchError((_) {}));
   }
@@ -250,6 +257,7 @@ class TravelRepository implements ITravelRepository {
 
   @override
   Future<void> addSplit(TravelSplit split) async {
+    await _dbHelper.unmarkRecordAsDeleted(split.id);
     await _dbHelper.insertSplit(split);
     unawaited(_syncService.syncTravelSplit(split).catchError((_) {}));
   }

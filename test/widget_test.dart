@@ -7,6 +7,7 @@ import 'package:royal_spend/core/constants/app_constants.dart';
 import 'package:royal_spend/core/theme/app_theme.dart';
 import 'package:royal_spend/data/repositories/settings_repository.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
+import 'package:royal_spend/providers/profile_image_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/ui/screens/main_navigation_screen.dart';
@@ -33,6 +34,7 @@ void main() {
           ChangeNotifierProvider.value(value: expenseProvider),
           ChangeNotifierProvider.value(value: quickLogProvider),
           ChangeNotifierProvider.value(value: travelProvider),
+          ChangeNotifierProvider(create: (_) => ProfileImageProvider()),
         ],
         child: const _TestApp(),
       ),
@@ -43,7 +45,7 @@ void main() {
     // Verify app renders all navigation tabs including Travel
     expect(find.text('Expenses'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
-    expect(find.text('Travel'), findsOneWidget);
+    expect(find.text('Travel'), findsWidgets);
     expect(find.text('Analytics'), findsOneWidget);
     expect(find.text('Profile'), findsOneWidget);
 

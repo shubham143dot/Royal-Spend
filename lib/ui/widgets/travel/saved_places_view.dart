@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/services/maps/google_maps_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/glass_decorations.dart';
@@ -13,6 +14,7 @@ import '../glass_button.dart';
 import '../glass_card.dart';
 import '../glass_text_field.dart';
 import '../liquid_pop.dart';
+import '../maps/places_autocomplete_dialog.dart';
 
 class SavedPlacesView extends StatefulWidget {
   final bool isDark;
@@ -256,54 +258,102 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
                           ),
                         ),
 
-                        // Quick action: Add to Day
+                        // Quick actions: Directions & Add to Day
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            LiquidPop(
-                              onTap: () =>
-                                  _showAddToDaySheet(context, place, travelProvider),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 9, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: (isDark
-                                          ? AppColors.appleBlue
-                                          : AppColors.royalIndigo)
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: (isDark
-                                            ? AppColors.appleBlue
-                                            : AppColors.royalIndigo)
-                                        .withValues(alpha: 0.3),
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.calendar_badge_plus,
-                                      size: 13,
-                                      color: isDark
-                                          ? AppColors.appleBlue
-                                          : AppColors.royalIndigo,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Add to Day',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (place.latitude != null && place.longitude != null) ...[
+                                  LiquidPop(
+                                    onTap: () {
+                                      HapticHelper.mediumImpact();
+                                      GoogleMapsLauncher.launchPlaceLocation(
+                                        latitude: place.latitude!,
+                                        longitude: place.longitude!,
+                                        placeName: place.name,
+                                        placeId: place.placeId,
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
                                         color: isDark
                                             ? AppColors.appleBlue
                                             : AppColors.royalIndigo,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.location_fill,
+                                            size: 11,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Maps',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                LiquidPop(
+                                  onTap: () =>
+                                      _showAddToDaySheet(context, place, travelProvider),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: (isDark
+                                              ? AppColors.appleGreen
+                                              : AppColors.vividMint)
+                                          .withValues(alpha: 0.16),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: (isDark
+                                                ? AppColors.appleGreen
+                                                : AppColors.vividMint)
+                                            .withValues(alpha: 0.4),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.calendar_badge_plus,
+                                          size: 11,
+                                          color: isDark
+                                              ? AppColors.appleGreen
+                                              : AppColors.vividMint,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Add to Day',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark
+                                              ? AppColors.appleGreen
+                                              : AppColors.vividMint,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             GestureDetector(
@@ -334,8 +384,12 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
 
   void _showAddPlaceDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
-    String category = 'Sightseeing';
+    String category = 'Tourist Attractions';
+    double? latitude;
+    double? longitude;
+    String? placeId;
 
     showModalBottomSheet(
       context: context,
@@ -374,7 +428,88 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
                   fontSize: 18,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+
+              // Search Google Places Action
+              LiquidPop(
+                onTap: () async {
+                  final details = await PlacesAutocompleteDialog.show(
+                    context,
+                    title: 'Search Location to Save',
+                    hintText: 'Search restaurants, hotels, tourist spots...',
+                    isDark: widget.isDark,
+                  );
+                  if (details != null) {
+                    setDialogState(() {
+                      nameCtrl.text = details.name;
+                      addressCtrl.text = details.formattedAddress;
+                      latitude = details.latitude;
+                      longitude = details.longitude;
+                      placeId = details.id;
+                      category = details.bestCategory;
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: (widget.isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                        .withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: (widget.isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                          .withValues(alpha: 0.35),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.search,
+                        size: 16,
+                        color: widget.isDark
+                            ? AppColors.appleBlue
+                            : AppColors.royalIndigo,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          nameCtrl.text.isNotEmpty
+                              ? 'Selected: ${nameCtrl.text}'
+                              : 'Search Google Places for verified coordinates',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: widget.isDark
+                                ? AppColors.appleBlue
+                                : AppColors.royalIndigo,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (latitude != null && longitude != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.appleGreen.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'GPS OK',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.appleGreen,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
               GlassTextField(
                 controller: nameCtrl,
                 labelText: 'Place Name',
@@ -405,10 +540,16 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
                     id: const Uuid().v4(),
                     tripId: tripId,
                     name: nameCtrl.text.trim(),
+                    address: addressCtrl.text.trim().isNotEmpty
+                        ? addressCtrl.text.trim()
+                        : null,
                     locationNotes: notesCtrl.text.trim().isNotEmpty
                         ? notesCtrl.text.trim()
                         : null,
                     category: category,
+                    latitude: latitude,
+                    longitude: longitude,
+                    placeId: placeId,
                   );
                   context.read<TravelProvider>().addSavedPlace(place);
                   Navigator.pop(ctx);
@@ -418,7 +559,11 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
           ),
         ),
       ),
-    );
+    ).then((_) {
+      nameCtrl.dispose();
+      addressCtrl.dispose();
+      notesCtrl.dispose();
+    });
   }
 
   void _showAddToDaySheet(
@@ -541,6 +686,8 @@ class _SavedPlacesViewState extends State<SavedPlacesView> {
           ],
         ),
       ),
-    );
+    ).then((_) {
+      timeCtrl.dispose();
+    });
   }
 }

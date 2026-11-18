@@ -1,22 +1,27 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
+import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:provider/provider.dart';
 
 import 'package:royal_spend/core/constants/app_constants.dart';
-import 'package:royal_spend/core/services/ocr/ocr_service.dart';
-import 'package:royal_spend/core/services/ocr/receipt_parser.dart';
+import 'package:royal_spend/core/services/firestore/firestore_sync_service.dart';
+import 'package:royal_spend/core/services/network/network_status_service.dart';
 import 'package:royal_spend/core/theme/app_theme.dart';
 import 'package:royal_spend/data/repositories/settings_repository.dart';
 import 'package:royal_spend/firebase_options.dart';
+import 'package:royal_spend/providers/app_lock_provider.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
+import 'package:royal_spend/providers/profile_image_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
 import 'package:royal_spend/ui/screens/auth_gate.dart';
+import 'package:royal_spend/ui/screens/splash/cinematic_splash_screen.dart';
+import 'package:royal_spend/ui/widgets/security/app_lock_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +41,19 @@ void main() async {
     debugPrint('Firebase initialization note: $e');
   }
 
+  // Configure Google Maps Android renderer asynchronously (non-blocking for fast cold-start)
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    final GoogleMapsFlutterPlatform mapsImplementation =
+        GoogleMapsFlutterPlatform.instance;
+    if (mapsImplementation is GoogleMapsFlutterAndroid) {
+      mapsImplementation.useAndroidViewSurface = true;
+      mapsImplementation.initializeWithRenderer(AndroidMapRenderer.latest).catchError((e) {
+        debugPrint('GoogleMapsFlutterAndroid renderer init note: $e');
+        return AndroidMapRenderer.latest;
+      });
+    }
+  }
+
   // Configure system overlays for iOS/Android edge-to-edge transparent navigation
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -47,26 +65,26 @@ void main() async {
     ),
   );
 
-  // Initialize Providers and initial check
+  // Initialize core providers concurrently with Future.wait for maximum cold-start performance
   final settingsRepo = SettingsRepository();
   final settingsProvider = SettingsProvider(repository: settingsRepo);
-  await settingsProvider.init();
-
   final expenseProvider = ExpenseProvider();
-  await expenseProvider.init();
-
   final quickLogProvider = QuickLogProvider();
-  await quickLogProvider.init();
-
   final travelProvider = TravelProvider();
-  await travelProvider.init();
+  final profileImageProvider = ProfileImageProvider();
+  final appLockProvider = AppLockProvider(settingsRepo: settingsRepo);
 
-  // If first launch, seed realistic sample transactions for instant showcase
-  final hasSeeded = await settingsRepo.hasSeededDemoData();
-  if (!hasSeeded && expenseProvider.filteredExpenses.isEmpty) {
-    await expenseProvider.seedRealisticSampleData();
-    await settingsRepo.setHasSeededDemoData(true);
-  }
+  await Future.wait([
+    settingsProvider.init(),
+    expenseProvider.init(),
+    quickLogProvider.init(),
+    travelProvider.init(),
+    appLockProvider.init(),
+  ]);
+
+  // Start real-time network connectivity monitoring & background sync
+  NetworkStatusService.instance.startMonitoring();
+  FirestoreSyncService.instance.initAutoSyncMonitoring();
 
   runApp(
     MultiProvider(
@@ -75,38 +93,12 @@ void main() async {
         ChangeNotifierProvider.value(value: expenseProvider),
         ChangeNotifierProvider.value(value: quickLogProvider),
         ChangeNotifierProvider.value(value: travelProvider),
+        ChangeNotifierProvider.value(value: profileImageProvider),
+        ChangeNotifierProvider.value(value: appLockProvider),
       ],
       child: const RoyalSpendApp(),
     ),
   );
-
-  Future.microtask(() async {
-    try {
-      final ocr = MlKitOcrService();
-      const testPath = '/data/user/0/com.royalshubham.royalspend.royal_spend/cache/scaled_1000328450.jpg';
-      if (await File(testPath).exists()) {
-        final res = await ocr.processImage(testPath);
-        debugPrint('PROBE 1000328450 RAW: """${res.fullText}"""');
-        for (final l in res.lines) {
-          debugPrint('PROBE 1000328450 LINE: "${l.text}"');
-        }
-        final p = ReceiptParser.parse(res.fullText, imagePath: testPath, ocrLines: res.lines);
-        debugPrint('PROBE 1000328450 PARSED: amount=${p.amount}, status=${p.amountStatus}, candidates=${p.candidateAmounts}');
-      }
-      const testPath2 = '/data/user/0/com.royalshubham.royalspend.royal_spend/cache/scaled_1000328449.jpg';
-      if (await File(testPath2).exists()) {
-        final res2 = await ocr.processImage(testPath2);
-        debugPrint('PROBE 1000328449 RAW: """${res2.fullText}"""');
-        for (final l in res2.lines) {
-          debugPrint('PROBE 1000328449 LINE: "${l.text}"');
-        }
-        final p2 = ReceiptParser.parse(res2.fullText, imagePath: testPath2, ocrLines: res2.lines);
-        debugPrint('PROBE 1000328449 PARSED: amount=${p2.amount}, status=${p2.amountStatus}, merchant=${p2.merchant}, candidates=${p2.candidateAmounts}');
-      }
-    } catch (e, st) {
-      debugPrint('PROBE ERROR: $e\n$st');
-    }
-  });
 }
 
 class RoyalSpendApp extends StatelessWidget {
@@ -122,7 +114,11 @@ class RoyalSpendApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
-      home: const AuthGate(),
+      home: const CinematicSplashGate(
+        child: AppLockGate(
+          child: AuthGate(),
+        ),
+      ),
     );
   }
 }

@@ -4,9 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:royal_spend/core/constants/default_categories.dart';
-import 'package:royal_spend/core/services/ocr/image_picker_service.dart';
-import 'package:royal_spend/core/services/ocr/parsed_transaction.dart';
-import 'package:royal_spend/core/services/ocr/parsers/upi_parser_utils.dart';
+import 'package:royal_spend/core/services/firestore/firestore_sync_service.dart';
+import 'package:royal_spend/core/services/network/network_status_service.dart';
 import 'package:royal_spend/core/theme/app_colors.dart';
 import 'package:royal_spend/core/theme/app_text_styles.dart';
 import 'package:royal_spend/core/utils/date_formatter.dart';
@@ -18,9 +17,6 @@ import 'package:royal_spend/providers/travel_provider.dart';
 import 'package:royal_spend/ui/widgets/glass_button.dart';
 import 'package:royal_spend/ui/widgets/glass_text_field.dart';
 import 'package:royal_spend/ui/widgets/liquid_pop.dart';
-import 'package:royal_spend/ui/widgets/smart_import/smart_import_section.dart';
-
-enum ExpenseEntryMode { manual, smartImport }
 
 class AddEditExpenseSheet extends StatefulWidget {
   final Expense? expenseToEdit;
@@ -28,6 +24,7 @@ class AddEditExpenseSheet extends StatefulWidget {
   final double? initialAmount;
   final String? initialCategoryId;
   final String? initialTripId;
+  final DateTime? initialDate;
 
   const AddEditExpenseSheet({
     super.key,
@@ -36,6 +33,7 @@ class AddEditExpenseSheet extends StatefulWidget {
     this.initialAmount,
     this.initialCategoryId,
     this.initialTripId,
+    this.initialDate,
   });
 
   static Future<void> show(
@@ -45,6 +43,7 @@ class AddEditExpenseSheet extends StatefulWidget {
     double? initialAmount,
     String? initialCategoryId,
     String? initialTripId,
+    DateTime? initialDate,
   }) {
     HapticHelper.mediumImpact();
     return showModalBottomSheet(
@@ -63,6 +62,7 @@ class AddEditExpenseSheet extends StatefulWidget {
         initialAmount: initialAmount,
         initialCategoryId: initialCategoryId,
         initialTripId: initialTripId,
+        initialDate: initialDate,
       ),
     );
   }
@@ -82,11 +82,6 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
   late DateTime _selectedDate;
   String? _selectedTripId;
   bool _isSubmitting = false;
-
-  ExpenseEntryMode _entryMode = ExpenseEntryMode.manual;
-  ParsedTransaction? _parsedTransaction;
-  bool _smartImportAmountConfirmed = false;
-  final bool _isOcrProcessing = false;
 
   @override
   void initState() {
@@ -116,7 +111,7 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
         widget.initialCategoryId ??
         DefaultCategories.categories.first.id;
     _selectedPaymentMethod = item?.paymentMethod ?? PaymentMethod.upi;
-    _selectedDate = item?.date ?? DateTime.now();
+    _selectedDate = item?.date ?? widget.initialDate ?? DateTime.now();
     _selectedTripId = item?.tripId ?? widget.initialTripId;
   }
 
@@ -126,91 +121,6 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
-  }
-
-  void _handleTransactionParsed(ParsedTransaction parsed) {
-    setState(() {
-      _parsedTransaction = parsed;
-      _smartImportAmountConfirmed =
-          parsed.amountStatus == AmountExtractionStatus.extracted;
-      if (parsed.merchant != null && parsed.merchant!.isNotEmpty) {
-        _titleController.text = parsed.merchant!;
-      }
-
-      // Determine amount to populate into the expense field:
-      // Prefer primary parsed amount, or top candidate, or extract any Rupee amount from text
-      var targetAmount = parsed.amount ??
-          (parsed.candidateAmounts.isNotEmpty ? parsed.candidateAmounts.first : null);
-
-      if (targetAmount == null || targetAmount <= 0) {
-        final fallbackRupees = UpiParserUtils.extractAllRupeeAmounts(parsed.rawText);
-        if (fallbackRupees.isNotEmpty) {
-          targetAmount = fallbackRupees.first;
-          parsed = parsed.copyWith(
-            amount: targetAmount,
-            amountStatus: AmountExtractionStatus.extracted,
-            candidateAmounts: fallbackRupees,
-          );
-          _parsedTransaction = parsed;
-        }
-      }
-
-      if (targetAmount != null && targetAmount > 0) {
-        _amountController.text = targetAmount.toStringAsFixed(
-          targetAmount.truncateToDouble() == targetAmount ? 0 : 2,
-        );
-        _smartImportAmountConfirmed = true;
-        if (parsed.amount == null) {
-          _parsedTransaction = parsed.copyWith(
-            amount: targetAmount,
-            amountStatus: AmountExtractionStatus.extracted,
-          );
-        }
-      } else {
-        // Clear any amount left from a previous/manual entry
-        if (_amountController.text.trim().isEmpty) {
-          _amountController.clear();
-        }
-      }
-      if (DefaultCategories.categories.any((c) => c.id == parsed.categoryId)) {
-        _selectedCategoryId = parsed.categoryId;
-      }
-      _selectedPaymentMethod = parsed.paymentMethod;
-      if (parsed.date != null) {
-        _selectedDate = parsed.date!;
-      }
-      if (parsed.referenceId != null && parsed.referenceId!.isNotEmpty) {
-        final currentNotes = _notesController.text.trim();
-        if (currentNotes.isEmpty) {
-          _notesController.text = 'Ref: ${parsed.referenceId}';
-        } else if (!currentNotes.contains(parsed.referenceId!)) {
-          _notesController.text = '$currentNotes | Ref: ${parsed.referenceId}';
-        }
-      }
-    });
-  }
-
-  void _handleSelectCandidateAmount(double amount) {
-    setState(() {
-      _amountController.text = amount.toStringAsFixed(
-        amount.truncateToDouble() == amount ? 0 : 2,
-      );
-      _smartImportAmountConfirmed = true;
-      if (_parsedTransaction != null) {
-        _parsedTransaction = _parsedTransaction!.copyWith(
-          amount: amount,
-          amountStatus: AmountExtractionStatus.extracted,
-        );
-      }
-    });
-  }
-
-  void _handleResetSmartImport() {
-    HapticHelper.selectionClick();
-    setState(() {
-      _parsedTransaction = null;
-      _smartImportAmountConfirmed = false;
-    });
   }
 
   Future<void> _pickDate(bool isDark) async {
@@ -280,16 +190,24 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
       );
       return;
     }
-    _smartImportAmountConfirmed = true;
-
     setState(() => _isSubmitting = true);
 
     try {
       final provider = context.read<ExpenseProvider>();
       final isEditing = widget.expenseToEdit != null;
+      final expenseId = isEditing ? widget.expenseToEdit!.id : const Uuid().v4();
+
+      String? authUid;
+      try {
+        authUid = FirestoreSyncService.instance.currentUserId;
+      } catch (_) {}
+      final settingsEmail = context.read<SettingsProvider>().userEmail;
+      final userId = authUid ?? settingsEmail;
+      final isOnline = NetworkStatusService.instance.isConnected;
+      final syncStatus = isOnline ? ExpenseSyncStatus.synced : ExpenseSyncStatus.pending;
 
       final expense = Expense(
-        id: isEditing ? widget.expenseToEdit!.id : const Uuid().v4(),
+        id: expenseId,
         title: _titleController.text.trim(),
         amount: amount,
         categoryId: _selectedCategoryId,
@@ -299,12 +217,14 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
             ? null
             : _notesController.text.trim(),
         tripId: _selectedTripId,
-        isIncome: isEditing
-            ? widget.expenseToEdit!.isIncome
-            : (_entryMode == ExpenseEntryMode.smartImport &&
-                  (_parsedTransaction?.isIncome ?? false)),
+        isIncome: isEditing ? widget.expenseToEdit!.isIncome : false,
         createdAt: isEditing ? widget.expenseToEdit!.createdAt : DateTime.now(),
         updatedAt: DateTime.now(),
+        userId: isEditing ? (widget.expenseToEdit!.userId ?? userId) : userId,
+        syncStatus: isEditing ? widget.expenseToEdit!.syncStatus : syncStatus,
+        receiptPath: widget.expenseToEdit?.receiptPath,
+        cloudImageUrl: widget.expenseToEdit?.cloudImageUrl,
+        ocrData: widget.expenseToEdit?.ocrData,
       );
 
       if (isEditing) {
@@ -323,11 +243,6 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
         } catch (_) {}
       }
 
-      // Privacy: Clean up temporary receipt image if one was used
-      if (_parsedTransaction?.imagePath != null) {
-        await ImagePickerService.deleteTempImage(_parsedTransaction!.imagePath);
-      }
-
       HapticHelper.success();
       if (mounted) {
         Navigator.pop(context);
@@ -337,9 +252,7 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
             content: Text(
               isEditing
                   ? 'Expense updated successfully!'
-                  : (_entryMode == ExpenseEntryMode.smartImport
-                        ? 'Smart receipt imported successfully!'
-                        : 'Expense recorded successfully!'),
+                  : 'Expense recorded successfully!',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -372,27 +285,12 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
     }
   }
 
-  String _amountReviewMessage(
-    AmountExtractionStatus status,
-  ) => switch (status) {
-    AmountExtractionStatus.ambiguous =>
-      'Several amounts look possible. Select one above or enter the amount.',
-    AmountExtractionStatus.invalid =>
-      'The amount text could not be read safely. Enter it manually.',
-    AmountExtractionStatus.missing =>
-      'No reliable amount was found. Enter it manually.',
-    AmountExtractionStatus.extracted => '',
-  };
-
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isDark = settings.isDarkMode(context);
     final currencySymbol = settings.currencySymbol;
     final isEditing = widget.expenseToEdit != null;
-    final isSmartImportSelected = _entryMode == ExpenseEntryMode.smartImport;
-    final isAwaitingSmartImportImage =
-        isSmartImportSelected && _parsedTransaction == null;
 
     return Container(
       padding: EdgeInsets.only(
@@ -448,11 +346,7 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isEditing
-                          ? 'Edit Expense'
-                          : (_entryMode == ExpenseEntryMode.smartImport
-                                ? 'Smart Import'
-                                : 'Record Expense'),
+                      isEditing ? 'Edit Expense' : 'Record Expense',
                       style: AppTextStyles.titleLarge.copyWith(
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -478,137 +372,47 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
                 ),
                 const SizedBox(height: 16),
 
-                // Segmented Switcher (Manual Entry vs Smart Import)
-                if (!isEditing) ...[
-                  _ModeSwitcher(
-                    currentMode: _entryMode,
-                    isDark: isDark,
-                    onModeChanged: (mode) {
-                      HapticHelper.selectionClick();
-                      setState(() => _entryMode = mode);
-                    },
+                // Big Amount Field
+                GlassTextField(
+                  controller: _amountController,
+                  hintText: '0.00',
+                  labelText: 'EXPENSE AMOUNT',
+                  prefixIcon: null,
+                  isDark: isDark,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  const SizedBox(height: 18),
-                ],
-
-                // Smart Import Section (Pickers / Processing / Parsed Preview)
-                if (isSmartImportSelected) ...[
-                  SmartImportSection(
-                    isDark: isDark,
-                    parsedTransaction: _parsedTransaction,
-                    amountManuallyConfirmed: _smartImportAmountConfirmed,
-                    isProcessing: _isOcrProcessing,
-                    onTransactionParsed: _handleTransactionParsed,
-                    onReset: _handleResetSmartImport,
-                    onSelectCandidateAmount: _handleSelectCandidateAmount,
-                    onFallbackToManual: () =>
-                        setState(() => _entryMode = ExpenseEntryMode.manual),
+                  autofocus: !isEditing,
+                  textStyle: AppTextStyles.currencyNumber.copyWith(
+                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
                   ),
-                ],
-
-                // Editable Fields & Preview (Hidden only when user has not yet picked an image in Smart Import mode)
-                if (!isAwaitingSmartImportImage) ...[
-                  if (isSmartImportSelected && _parsedTransaction != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            CupertinoIcons.pencil_ellipsis_rectangle,
-                            size: 15,
-                            color: isDark
-                                ? AppColors.appleBlue
-                                : AppColors.royalIndigo,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'CONFIRM & EDIT TRANSACTION DETAILS',
-                            style: AppTextStyles.labelUppercase.copyWith(
-                              fontSize: 11,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.lightTextSecondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Big Amount Field
-                  GlassTextField(
-                    controller: _amountController,
-                    hintText: '0.00',
-                    labelText: 'EXPENSE AMOUNT',
-                    prefixIcon: null,
-                    isDark: isDark,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    autofocus: !isEditing && !isSmartImportSelected,
-                    warning:
-                        isSmartImportSelected &&
-                        _parsedTransaction != null &&
-                        _parsedTransaction!.amountStatus !=
-                            AmountExtractionStatus.extracted &&
-                        !_smartImportAmountConfirmed,
-                    onChanged:
-                        isSmartImportSelected && _parsedTransaction != null
-                        ? (value) {
-                            final enteredAmount = double.tryParse(value.trim());
-                            setState(
-                              () => _smartImportAmountConfirmed =
-                                  enteredAmount != null && enteredAmount > 0,
-                            );
-                          }
-                        : null,
-                    textStyle: AppTextStyles.currencyNumber.copyWith(
-                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                    ),
-                    suffix: Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text(
-                          currencySymbol,
-                          style: AppTextStyles.titleLarge.copyWith(
-                            color: isDark
-                                ? AppColors.appleBlue
-                                : AppColors.royalIndigo,
-                            fontWeight: FontWeight.w700,
-                          ),
+                  suffix: Padding(
+                    padding: const EdgeInsets.only(right: 14),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(
+                        currencySymbol,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: isDark
+                              ? AppColors.appleBlue
+                              : AppColors.royalIndigo,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter an amount';
-                      }
-                      final num = double.tryParse(value.trim());
-                      if (num == null || !num.isFinite || num <= 0) {
-                        return 'Amount must be greater than zero';
-                      }
-                      return null;
-                    },
                   ),
-                  if (isSmartImportSelected &&
-                      _parsedTransaction != null &&
-                      _parsedTransaction!.amountStatus !=
-                          AmountExtractionStatus.extracted &&
-                      !_smartImportAmountConfirmed) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      _amountReviewMessage(_parsedTransaction!.amountStatus),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark
-                            ? AppColors.amberWarning
-                            : const Color(0xFF92400E),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter an amount';
+                    }
+                    final num = double.tryParse(value.trim());
+                    if (num == null || !num.isFinite || num <= 0) {
+                      return 'Amount must be greater than zero';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
 
                   // Expense Title / Merchant
                   GlassTextField(
@@ -1045,190 +849,22 @@ class _AddEditExpenseSheetState extends State<AddEditExpenseSheet> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Actions: Cancel & Save Expense
-                  if (isSmartImportSelected &&
-                      _parsedTransaction != null &&
-                      _parsedTransaction!.isDuplicate) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GlassButton(
-                            label: 'Cancel Import',
-                            icon: CupertinoIcons.xmark,
-                            variant: GlassButtonVariant.secondary,
-                            isDark: isDark,
-                            onPressed: _handleResetSmartImport,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: GlassButton(
-                            label: 'Save Anyway',
-                            icon: CupertinoIcons.check_mark_circled_solid,
-                            variant: GlassButtonVariant.primary,
-                            isDark: isDark,
-                            isLoading: _isSubmitting,
-                            onPressed: _save,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    GlassButton(
-                      label: isEditing
-                          ? 'Update Expense'
-                          : (isSmartImportSelected
-                                ? (_parsedTransaction?.isIncome == true
-                                      ? 'Save Smart Income'
-                                      : 'Save Smart Expense')
-                                : 'Save Expense'),
-                      icon: isEditing
-                          ? CupertinoIcons.check_mark_circled_solid
-                          : CupertinoIcons.add_circled_solid,
-                      variant: GlassButtonVariant.primary,
-                      isDark: isDark,
-                      isLoading: _isSubmitting,
-                      onPressed: _save,
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeSwitcher extends StatelessWidget {
-  final ExpenseEntryMode currentMode;
-  final bool isDark;
-  final ValueChanged<ExpenseEntryMode> onModeChanged;
-
-  const _ModeSwitcher({
-    required this.currentMode,
-    required this.isDark,
-    required this.onModeChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? AppColors.darkGlassHighlight
-              : Colors.white.withValues(alpha: 0.8),
-          width: 0.6,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ModeSwitchTab(
-              title: 'Manual Entry',
-              icon: CupertinoIcons.pencil,
-              isSelected: currentMode == ExpenseEntryMode.manual,
-              isDark: isDark,
-              onTap: () => onModeChanged(ExpenseEntryMode.manual),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _ModeSwitchTab(
-              title: 'Smart Import',
-              icon: CupertinoIcons.sparkles,
-              isSelected: currentMode == ExpenseEntryMode.smartImport,
-              isDark: isDark,
-              accentColor: AppColors.electricCyan,
-              onTap: () => onModeChanged(ExpenseEntryMode.smartImport),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeSwitchTab extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final bool isSelected;
-  final bool isDark;
-  final Color? accentColor;
-  final VoidCallback onTap;
-
-  const _ModeSwitchTab({
-    required this.title,
-    required this.icon,
-    required this.isSelected,
-    required this.isDark,
-    this.accentColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LiquidPop(
-      onTap: onTap,
-      pressedScale: 0.96,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected
-              ? (isDark ? AppColors.darkCard : Colors.white)
-              : Colors.transparent,
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                  // Actions: Save / Update Expense
+                  GlassButton(
+                    label: isEditing ? 'Update Expense' : 'Save Expense',
+                    icon: isEditing
+                        ? CupertinoIcons.check_mark_circled_solid
+                        : CupertinoIcons.add_circled_solid,
+                    variant: GlassButtonVariant.primary,
+                    isDark: isDark,
+                    isLoading: _isSubmitting,
+                    onPressed: _save,
                   ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected
-                    ? (accentColor ??
-                          (isDark
-                              ? AppColors.appleBlue
-                              : AppColors.royalIndigo))
-                    : (isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? (isDark ? Colors.white : AppColors.lightTextPrimary)
-                      : (isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.lightTextSecondary),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
   }
-}

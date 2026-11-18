@@ -1,11 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../core/services/auth/royal_auth_gateway.dart';
-import '../../../core/theme/auth_colors.dart';
-import 'blue_glass_components.dart';
+import '../../../core/theme/liquid_auth_colors.dart';
+import 'liquid_ui_components.dart';
 
-/// Shows the premium blue glassmorphism password recovery dialog.
-Future<void> showBlueForgotPasswordDialog({
+/// Shows the premium iOS liquid glassmorphism password recovery dialog.
+Future<void> showLiquidForgotPasswordDialog({
   required BuildContext context,
   required RoyalAuthGateway authGateway,
   String initialEmail = '',
@@ -73,21 +73,21 @@ Future<void> showBlueForgotPasswordDialog({
     barrierDismissible: !loading,
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setDialogState) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
         child: AlertDialog(
           backgroundColor: Colors.white.withValues(alpha: 0.08),
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(28),
             side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.35),
+              color: Colors.white.withValues(alpha: 0.28),
               width: 1.1,
             ),
           ),
           title: const Text(
             'Reset your password',
             style: TextStyle(
-              color: Colors.white,
+              color: LiquidAuthColors.textPrimary,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
             ),
@@ -98,16 +98,16 @@ Future<void> showBlueForgotPasswordDialog({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Enter the email address for your account.',
                   style: TextStyle(
-                    color: RoyalAuthColors.secondaryText.withValues(alpha: 0.90),
+                    color: LiquidAuthColors.textSecondary,
                     fontSize: 14,
                     height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 16),
-                BlueGlassTextField(
+                LiquidGlassTextField(
                   controller: resetEmailController,
                   focusNode: resetEmailFocus,
                   label: 'Email address',
@@ -125,8 +125,8 @@ Future<void> showBlueForgotPasswordDialog({
                     dialogMessage!,
                     style: TextStyle(
                       color: dialogError
-                          ? RoyalAuthColors.errorRed
-                          : RoyalAuthColors.successGreen,
+                          ? LiquidAuthColors.errorRed
+                          : LiquidAuthColors.successGreen,
                       fontSize: 13,
                       height: 1.35,
                       fontWeight: FontWeight.w500,
@@ -141,7 +141,7 @@ Future<void> showBlueForgotPasswordDialog({
               onPressed: loading ? null : () => Navigator.of(dialogContext).pop(),
               style: TextButton.styleFrom(
                 minimumSize: const Size(48, 48),
-                foregroundColor: RoyalAuthColors.secondaryText,
+                foregroundColor: LiquidAuthColors.textMuted,
               ),
               child: const Text('Cancel'),
             ),
@@ -151,7 +151,7 @@ Future<void> showBlueForgotPasswordDialog({
                   : () => sendReset(dialogContext, setDialogState),
               style: TextButton.styleFrom(
                 minimumSize: const Size(48, 48),
-                foregroundColor: RoyalAuthColors.neonCyan,
+                foregroundColor: Colors.white,
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
               ),
               child: loading
@@ -160,7 +160,7 @@ Future<void> showBlueForgotPasswordDialog({
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: RoyalAuthColors.neonCyan,
+                        color: Colors.white,
                       ),
                     )
                   : const Text('Send reset link'),
@@ -175,3 +175,16 @@ Future<void> showBlueForgotPasswordDialog({
   resetEmailFocus.dispose();
 }
 
+/// Backward compatibility alias for [showLiquidForgotPasswordDialog].
+Future<void> showBlueForgotPasswordDialog({
+  required BuildContext context,
+  required RoyalAuthGateway authGateway,
+  String initialEmail = '',
+  required void Function(String message, {bool isError}) onStatusChanged,
+}) =>
+    showLiquidForgotPasswordDialog(
+      context: context,
+      authGateway: authGateway,
+      initialEmail: initialEmail,
+      onStatusChanged: onStatusChanged,
+    );

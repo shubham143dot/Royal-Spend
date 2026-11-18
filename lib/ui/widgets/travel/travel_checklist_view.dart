@@ -418,7 +418,9 @@ class _TravelChecklistViewState extends State<TravelChecklistView> {
           ),
         ),
       ),
-    );
+    ).then((_) {
+      itemCtrl.dispose();
+    });
   }
 }
 

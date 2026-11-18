@@ -6,22 +6,40 @@ class AppConstants {
 
   // Assets
   static const String appLogoPath = 'assets/images/app_logo.png';
+  static const String royalLeatherBgPath = 'assets/images/royal_leather_bg.png';
   static const String appIconPath = 'assets/icons/app_icon.png';
   static const String introVideoPath = 'assets/videos/intro_video.mp4';
   static const String introPosterPath = 'assets/images/intro_poster.jpg';
   static const String loginVideoPath = 'assets/videos/login_background.mp4';
   static const String loginPosterPath = 'assets/images/login_poster.jpg';
 
+  // Admin Configuration
+  static const String adminEmail = 'subhamsoudeep@gmail.com';
+
+  /// Helper to check whether an email address matches the designated admin email.
+  static bool isAdmin(String? email) {
+    if (email == null) return false;
+    return email.trim().toLowerCase() == adminEmail.toLowerCase();
+  }
+
+  /// Checks whether a trip title or destination refers to the restricted "Back to Life" plan.
+  static bool isBackToLifeTrip(String? title, [String? destination]) {
+    final t = (title ?? '').toLowerCase().trim();
+    final d = (destination ?? '').toLowerCase().trim();
+    return t.contains('back to life') || d.contains('back to life');
+  }
+
   // Feature Flags
   /// Toggle to enable or disable the development auth bypass ('Skip for now').
   /// Set to false before production release once Firebase Auth is live.
-  static const bool enableDevAuthBypass = true;
+  static const bool enableDevAuthBypass = false;
 
   // Storage Keys
   static const String keyThemeMode = 'theme_mode';
   static const String keyCurrencySymbol = 'currency_symbol';
   static const String keyCurrencyCode = 'currency_code';
   static const String keyUserName = 'user_name';
+  static const String keyUserEmail = 'user_email';
   static const String keyMonthlyBudget = 'monthly_budget';
   static const String keyHasSeededDemoData = 'has_seeded_demo_data';
   static const String keyHapticsEnabled = 'haptics_enabled';
@@ -29,10 +47,13 @@ class AppConstants {
   static const String keyHasSeenIntro = 'has_seen_intro';
   static const String keyUserProfilePhoto = 'user_profile_photo';
   static const String keyIsAuthenticated = 'is_authenticated';
+  static const String keySelectedCategoryScope = 'selected_category_scope';
+  static const String keyAppLockEnabled = 'app_lock_enabled';
 
   // Default values
   static const String defaultCurrencySymbol = '₹';
   static const String defaultCurrencyCode = 'INR';
   static const double defaultMonthlyBudget = 35000.0;
   static const String defaultUserName = 'Shubham';
+  static const String defaultCategoryScope = 'mix';
 }

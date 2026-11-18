@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/liquid_auth_colors.dart';
 
 /// Ultra-smooth, battery-efficient, luxury video background for the Login Screen.
 ///
@@ -251,7 +252,7 @@ class _LoginVideoBackgroundState extends State<LoginVideoBackground>
             ),
 
           // 4. Ultra-sheer optical liquid scrim overlay - calibrated for maximum video transparency
-          // Ensures video motion and vivid lighting shine directly through the liquid glass
+          // Ensures video motion and natural colors shine directly through the liquid glass
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -260,18 +261,18 @@ class _LoginVideoBackgroundState extends State<LoginVideoBackground>
                   end: Alignment.bottomCenter,
                   stops: const [0.0, 0.20, 0.60, 0.85, 1.0],
                   colors: [
-                    Colors.black.withValues(alpha: 0.38 * widget.scrimOpacity),
-                    Colors.black.withValues(alpha: 0.12 * widget.scrimOpacity),
-                    Colors.black.withValues(alpha: 0.16 * widget.scrimOpacity),
-                    const Color(0xFF07152B).withValues(alpha: 0.35 * widget.scrimOpacity),
-                    const Color(0xFF050B1A).withValues(alpha: 0.48 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.35 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.10 * widget.scrimOpacity),
+                    Colors.black.withValues(alpha: 0.14 * widget.scrimOpacity),
+                    LiquidAuthColors.charcoalSurface.withValues(alpha: 0.35 * widget.scrimOpacity),
+                    LiquidAuthColors.charcoalDark.withValues(alpha: 0.48 * widget.scrimOpacity),
                   ],
                 ),
               ),
             ),
           ),
 
-          // 5. Subtle electric cyan/blue optical refraction tint
+          // 5. Subtle ethereal ambient specular refraction (pure neutral white/silver, zero blue/gold)
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -279,7 +280,7 @@ class _LoginVideoBackgroundState extends State<LoginVideoBackground>
                   center: const Alignment(0.0, -0.3),
                   radius: 1.1,
                   colors: [
-                    const Color(0xFF36D9FF).withValues(alpha: 0.05 * widget.scrimOpacity),
+                    LiquidAuthColors.specularWhite.withValues(alpha: 0.03 * widget.scrimOpacity),
                     Colors.transparent,
                   ],
                 ),

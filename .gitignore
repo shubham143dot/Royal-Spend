@@ -47,3 +47,11 @@ app.*.map.json
 .gradle/
 android/.gradle/
 android/build/
+
+# Security & Secrets
+*.env
+*.env.*
+**/local.properties
+key.properties
+*.jks
+*.keystore

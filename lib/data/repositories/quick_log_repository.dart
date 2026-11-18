@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/firestore/firestore_sync_service.dart';
 import '../models/quick_log_preset.dart';
 
 abstract class IQuickLogRepository {
@@ -32,11 +34,18 @@ class QuickLogRepository implements IQuickLogRepository {
     }
   }
 
-  @override
-  Future<void> savePresets(List<QuickLogPreset> presets) async {
+  Future<void> savePresetsLocally(List<QuickLogPreset> presets) async {
     final prefs = await SharedPreferences.getInstance();
     final rawJson = jsonEncode(presets.map((p) => p.toJson()).toList());
     await prefs.setString(_keyQuickLogPresets, rawJson);
+  }
+
+  @override
+  Future<void> savePresets(List<QuickLogPreset> presets) async {
+    await savePresetsLocally(presets);
+    unawaited(FirestoreSyncService.instance.saveUserPreferences(null, {
+      'quickLogPresets': presets.map((p) => p.toJson()).toList(),
+    }).catchError((_) {}));
   }
 
   @override

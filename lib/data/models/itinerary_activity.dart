@@ -119,6 +119,7 @@ class ItineraryActivity {
   final String? address;
   final double? latitude;
   final double? longitude;
+  final String? placeId;
   final double estimatedCost;
   final BookingStatus bookingStatus;
   final String? bookingReference;
@@ -143,6 +144,7 @@ class ItineraryActivity {
     this.address,
     this.latitude,
     this.longitude,
+    this.placeId,
     this.estimatedCost = 0.0,
     this.bookingStatus = BookingStatus.unconfirmed,
     this.bookingReference,
@@ -174,6 +176,7 @@ class ItineraryActivity {
     String? address,
     double? latitude,
     double? longitude,
+    String? placeId,
     double? estimatedCost,
     BookingStatus? bookingStatus,
     String? bookingReference,
@@ -198,6 +201,7 @@ class ItineraryActivity {
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      placeId: placeId ?? this.placeId,
       estimatedCost: estimatedCost ?? this.estimatedCost,
       bookingStatus: bookingStatus ?? this.bookingStatus,
       bookingReference: bookingReference ?? this.bookingReference,
@@ -226,6 +230,7 @@ class ItineraryActivity {
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
+      'place_id': placeId,
       'estimated_cost': estimatedCost,
       'booking_status': bookingStatus.name,
       'booking_reference': bookingReference,
@@ -277,6 +282,7 @@ class ItineraryActivity {
       address: map['address'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
+      placeId: map['place_id'] as String?,
       estimatedCost: (map['estimated_cost'] as num?)?.toDouble() ?? 0.0,
       bookingStatus: BookingStatus.values.firstWhere(
         (b) => b.name == map['booking_status'],

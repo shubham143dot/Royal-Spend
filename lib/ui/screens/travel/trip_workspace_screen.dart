@@ -212,7 +212,10 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
                         context, trip, travelProvider, isDark),
 
                     // Tab 3: Map & Places
-                    TripMapView(isDark: isDark),
+                    TripMapView(
+                      isDark: isDark,
+                      onNavigateToItinerary: () => _tabController.animateTo(1),
+                    ),
 
                     // Tab 4: Budget & Expenses
                     TravelBudgetView(isDark: isDark),
@@ -953,10 +956,13 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
               const SizedBox(width: 8),
               LiquidPop(
                 onTap: () {
+                  final stopsCount =
+                      (travelProvider.activitiesByDay[selectedDay.id]?.length ?? 0);
                   AddEditActivitySheet.show(
                     context,
                     tripId: trip.id,
                     dayId: selectedDay.id,
+                    stopNumber: stopsCount + 1,
                     isDark: isDark,
                     onSave: (act) => travelProvider.addActivity(act),
                   );
@@ -990,21 +996,21 @@ class _TripWorkspaceScreenState extends State<TripWorkspaceScreen>
 
         // Timeline View
         Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: ItineraryTimelineView(
-              day: selectedDay,
-              isDark: isDark,
-              onAddStop: () {
-                AddEditActivitySheet.show(
-                  context,
-                  tripId: trip.id,
-                  dayId: selectedDay.id,
-                  isDark: isDark,
-                  onSave: (act) => travelProvider.addActivity(act),
-                );
-              },
-            ),
+          child: ItineraryTimelineView(
+            day: selectedDay,
+            isDark: isDark,
+            onAddStop: () {
+              final stopsCount =
+                  (travelProvider.activitiesByDay[selectedDay.id]?.length ?? 0);
+              AddEditActivitySheet.show(
+                context,
+                tripId: trip.id,
+                dayId: selectedDay.id,
+                stopNumber: stopsCount + 1,
+                isDark: isDark,
+                onSave: (act) => travelProvider.addActivity(act),
+              );
+            },
           ),
         ),
       ],
@@ -1136,28 +1142,37 @@ class _MetricCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppColors.darkTextMuted
-                      : AppColors.lightTextMuted,
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.lightTextMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 4),
               Icon(icon, size: 14, color: color),
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : AppColors.lightTextPrimary,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? AppColors.darkTextPrimary
+                    : AppColors.lightTextPrimary,
+              ),
             ),
           ),
           if (subtitle != null) ...[
@@ -1170,6 +1185,8 @@ class _MetricCard extends StatelessWidget {
                     ? AppColors.darkTextSecondary
                     : AppColors.lightTextSecondary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ],

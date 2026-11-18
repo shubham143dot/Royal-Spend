@@ -74,6 +74,8 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _notesController;
+  late TextEditingController _startPlaceController;
+  late TextEditingController _startTimeController;
   late DateTime _selectedDate;
   late int _dayNumber;
 
@@ -86,6 +88,8 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
       text: d?.title ?? 'Day $_dayNumber Itinerary',
     );
     _notesController = TextEditingController(text: d?.notes ?? '');
+    _startPlaceController = TextEditingController(text: d?.startPlaceName ?? '');
+    _startTimeController = TextEditingController(text: d?.startTime ?? '');
     _selectedDate = d?.date ?? widget.defaultDate;
   }
 
@@ -93,6 +97,8 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
   void dispose() {
     _titleController.dispose();
     _notesController.dispose();
+    _startPlaceController.dispose();
+    _startTimeController.dispose();
     super.dispose();
   }
 
@@ -125,6 +131,9 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
     if (!_formKey.currentState!.validate()) return;
     HapticHelper.success();
 
+    final startPlace = _startPlaceController.text.trim();
+    final startTime = _startTimeController.text.trim();
+
     final day = ItineraryDay(
       id: widget.dayToEdit?.id ?? const Uuid().v4(),
       tripId: widget.tripId,
@@ -134,6 +143,18 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
           : null,
+      isCompleted: widget.dayToEdit?.isCompleted ?? false,
+      startPlaceName: startPlace.isNotEmpty
+          ? startPlace
+          : widget.dayToEdit?.startPlaceName,
+      startAddress: widget.dayToEdit?.startAddress,
+      startTime: startTime.isNotEmpty
+          ? startTime
+          : widget.dayToEdit?.startTime,
+      startNotes: widget.dayToEdit?.startNotes,
+      startType: widget.dayToEdit?.startType,
+      endPlaceName: widget.dayToEdit?.endPlaceName,
+      endTime: widget.dayToEdit?.endTime,
     );
 
     widget.onSave(day);
@@ -211,6 +232,16 @@ class _AddEditDaySheetState extends State<AddEditDaySheet> {
                 isDark: isDark,
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Please enter a day title' : null,
+              ),
+              const SizedBox(height: 14),
+
+              // Starting Point Input
+              GlassTextField(
+                controller: _startPlaceController,
+                labelText: 'Starting Point (Optional)',
+                hintText: 'e.g. Hotel Grand Palace, Airport, Home',
+                prefixIcon: CupertinoIcons.flag_fill,
+                isDark: isDark,
               ),
               const SizedBox(height: 14),
 

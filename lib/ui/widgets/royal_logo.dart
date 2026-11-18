@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/haptic_helper.dart';
 import 'liquid_pop.dart';
 
 /// Luxury 3D Royal Spend app logo widget with transparent floating geometry,
@@ -77,7 +78,10 @@ class RoyalLogo extends StatelessWidget {
     if (interactive || onTap != null) {
       return LiquidPop(
         pressedScale: 0.94,
-        onTap: onTap,
+        onTap: () {
+          HapticHelper.lightImpact();
+          onTap?.call();
+        },
         child: logoBox,
       );
     }

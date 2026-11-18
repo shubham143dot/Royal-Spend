@@ -15,6 +15,7 @@ import '../../widgets/glass_button.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/glass_text_field.dart';
 import '../../widgets/liquid_pop.dart';
+import '../../widgets/maps/places_autocomplete_dialog.dart';
 import 'trip_workspace_screen.dart';
 
 class CreatePlanWizardScreen extends StatefulWidget {
@@ -388,6 +389,30 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
                           hintText: 'e.g. Darjeeling, West Bengal, India',
                           prefixIcon: CupertinoIcons.placemark_fill,
                           isDark: isDark,
+                          suffix: IconButton(
+                            icon: const Icon(CupertinoIcons.search, size: 16),
+                            tooltip: 'Search Google Places',
+                            onPressed: () async {
+                              final details = await PlacesAutocompleteDialog.show(
+                                context,
+                                title: 'Select Destination',
+                                hintText: 'Search city, region, or country...',
+                                isDark: isDark,
+                              );
+                              if (details != null && mounted) {
+                                setState(() {
+                                  _destinationController.text =
+                                      details.formattedAddress.isNotEmpty
+                                          ? details.formattedAddress
+                                          : details.name;
+                                  if (_titleController.text.trim().isEmpty) {
+                                    _titleController.text =
+                                        'Trip to ${details.name}';
+                                  }
+                                });
+                              }
+                            },
+                          ),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Please enter a destination';
@@ -403,6 +428,26 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
                           hintText: 'e.g. Hijli, Kolkata, New Delhi',
                           prefixIcon: CupertinoIcons.arrow_up_right_circle,
                           isDark: isDark,
+                          suffix: IconButton(
+                            icon: const Icon(CupertinoIcons.search, size: 16),
+                            tooltip: 'Search Google Places',
+                            onPressed: () async {
+                              final details = await PlacesAutocompleteDialog.show(
+                                context,
+                                title: 'Select Starting Location',
+                                hintText: 'Search home city, airport, station...',
+                                isDark: isDark,
+                              );
+                              if (details != null && mounted) {
+                                setState(() {
+                                  _departureController.text =
+                                      details.formattedAddress.isNotEmpty
+                                          ? details.formattedAddress
+                                          : details.name;
+                                });
+                              }
+                            },
+                          ),
                         ),
                         const SizedBox(height: 22),
 
@@ -447,14 +492,18 @@ class _CreatePlanWizardScreenState extends State<CreatePlanWizardScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        '${dateFormat.format(_startDate)}  →  ${dateFormat.format(_endDate)}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: isDark
-                                              ? AppColors.darkTextPrimary
-                                              : AppColors.lightTextPrimary,
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '${dateFormat.format(_startDate)}  →  ${dateFormat.format(_endDate)}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark
+                                                ? AppColors.darkTextPrimary
+                                                : AppColors.lightTextPrimary,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 2),

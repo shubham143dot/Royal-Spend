@@ -9,6 +9,7 @@ import 'package:royal_spend/data/models/trip.dart';
 import 'package:royal_spend/data/models/expense.dart';
 import 'package:royal_spend/data/repositories/settings_repository.dart';
 import 'package:royal_spend/providers/expense_provider.dart';
+import 'package:royal_spend/providers/profile_image_provider.dart';
 import 'package:royal_spend/providers/quick_log_provider.dart';
 import 'package:royal_spend/providers/settings_provider.dart';
 import 'package:royal_spend/providers/travel_provider.dart';
@@ -22,7 +23,7 @@ import 'package:royal_spend/data/models/budget.dart';
 import 'package:royal_spend/data/repositories/expense_repository.dart';
 import 'travel_multi_plan_isolation_test.dart';
 
-class _FakeExpenseRepo implements IExpenseRepository {
+class _FakeExpenseRepo extends IExpenseRepository {
   final List<Expense> _expenses = [];
 
   @override
@@ -111,6 +112,7 @@ void main() {
           ChangeNotifierProvider.value(value: expenseProvider),
           ChangeNotifierProvider.value(value: quickLogProvider),
           ChangeNotifierProvider.value(value: travelProvider),
+          ChangeNotifierProvider(create: (_) => ProfileImageProvider()),
         ],
         child: MaterialApp(
           title: AppConstants.appName,
@@ -129,7 +131,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Find Travel nav tab with airplane icon
-      final travelNavFinder = find.text('Travel');
+      final travelNavFinder = find.text('Travel').last;
       expect(travelNavFinder, findsOneWidget);
 
       // Tap Travel tab
@@ -137,13 +139,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Travel dashboard header
-      expect(find.text('Your Adventures'), findsOneWidget);
-      expect(find.text('Every journey, beautifully planned.'), findsOneWidget);
-      expect(find.text('+ Create New Plan'), findsOneWidget);
+      expect(find.text('Travel Hub'), findsOneWidget);
+      expect(find.text('Explore, schedule, and track trips effortlessly.'), findsOneWidget);
+      expect(find.text('+ Plan New Adventure'), findsOneWidget);
 
       // Verify Darjeeling Trip card is displayed
-      expect(find.text('Darjeeling Trip'), findsOneWidget);
-      expect(find.text('Darjeeling, West Bengal'), findsOneWidget);
+      expect(find.text('Darjeeling Trip'), findsWidgets);
+      expect(find.text('Darjeeling, West Bengal'), findsWidgets);
     });
 
     testWidgets('Tapping a trip card opens Trip Workspace screen', (tester) async {
@@ -156,10 +158,10 @@ void main() {
 
       // Verify trip card is visible
       final cardFinder = find.text('Darjeeling Trip');
-      expect(cardFinder, findsOneWidget);
+      expect(cardFinder, findsWidgets);
 
       // Tap card
-      await tester.tap(cardFinder);
+      await tester.tap(cardFinder.first);
       await tester.pumpAndSettle();
 
       // Verify Trip Workspace is active
@@ -201,7 +203,7 @@ void main() {
       expect(scaffoldExpenses.floatingActionButton, isNotNull);
 
       // Switch to Travel tab (index 2): travel FAB is present
-      await tester.tap(find.text('Travel'));
+      await tester.tap(find.text('Travel').last);
       await tester.pumpAndSettle();
 
       final scaffoldTravel = tester.widget<Scaffold>(find.byType(Scaffold).first);

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'image_preprocessor.dart';
 
 /// Physical spatial line data extracted by on-device OCR, containing text and visual bounding box dimensions.
 class OcrLineData {
@@ -64,8 +65,13 @@ class MlKitOcrService implements IOcrService {
       );
     }
 
+    String? preprocessedPath;
     try {
-      final inputImage = InputImage.fromFilePath(imagePath);
+      // Preprocess image to bake in EXIF rotation, downscale oversized phone photos to prevent OOM,
+      // and optimize clarity for on-device recognition
+      preprocessedPath = await ImagePreprocessor.preprocessReceipt(imagePath);
+
+      final inputImage = InputImage.fromFilePath(preprocessedPath);
       final RecognizedText recognizedText = await _recognizer.processImage(
         inputImage,
       );
@@ -98,7 +104,18 @@ class MlKitOcrService implements IOcrService {
       );
     } catch (e) {
       debugPrint('[MlKitOcrService] OCR recognition failed: $e');
+      if (e.toString().toLowerCase().contains('model') ||
+          e.toString().toLowerCase().contains('waiting for')) {
+        throw StateError(
+          'Google ML Kit OCR offline model is initializing. Please retry in a few moments.',
+        );
+      }
       rethrow;
+    } finally {
+      if (preprocessedPath != null && preprocessedPath != imagePath) {
+        // Asynchronously clean up the intermediate preprocessed file
+        ImagePreprocessor.cleanup(preprocessedPath, originalPath: imagePath);
+      }
     }
   }
 

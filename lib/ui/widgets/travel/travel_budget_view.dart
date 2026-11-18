@@ -6,11 +6,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/haptic_helper.dart';
+import '../../../providers/expense_provider.dart';
 import '../../../providers/travel_provider.dart';
 import '../glass_card.dart';
 import '../liquid_pop.dart';
 import 'bill_split_dialog.dart';
 import 'quick_travel_expense_sheet.dart';
+import 'set_travel_budget_sheet.dart';
 
 class TravelBudgetView extends StatelessWidget {
   final bool isDark;
@@ -20,18 +22,30 @@ class TravelBudgetView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final travelProvider = context.watch<TravelProvider>();
+    final expenseProvider = context.watch<ExpenseProvider>();
     final trip = travelProvider.selectedTrip;
 
     if (trip == null) {
       return const SizedBox.shrink();
     }
 
-    final totalBudget = trip.budget;
+    // Dynamic travel expenses linked to this trip from the global ExpenseProvider
+    final liveTripExpenses = expenseProvider.allExpenses
+        .where((e) => e.tripId == trip.id && !e.isIncome)
+        .toList();
+    final effectiveExpenses = liveTripExpenses.isNotEmpty
+        ? liveTripExpenses
+        : travelProvider.currentLinkedExpenses.where((e) => !e.isIncome).toList();
+
+    final double totalBudget = trip.budget;
+    final double actualSpent = effectiveExpenses.fold(
+        0.0, (sum, exp) => sum + exp.amount);
+    final double remainingBudget = totalBudget - actualSpent;
+    final double utilizationPct =
+        totalBudget > 0 ? (actualSpent / totalBudget) * 100 : 0.0;
+    final double progress = totalBudget > 0 ? (actualSpent / totalBudget) : 0.0;
+
     final estimated = travelProvider.estimatedCost;
-    final actual = travelProvider.actualRecordedSpending;
-    final remaining = travelProvider.remainingBudget;
-    final progress = travelProvider.budgetProgress;
-    final linkedExpenses = travelProvider.currentLinkedExpenses;
     final settlements = travelProvider.settlements;
     final splits = travelProvider.currentSplits;
 
@@ -41,77 +55,140 @@ class TravelBudgetView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Budget Overview Card
+          // 1. Dedicated Travel Budget & Spending Card
           GlassCard(
             isDark: isDark,
             padding: const EdgeInsets.all(18.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header with "Set / Edit Budget" Action
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Trip Budget & Spending',
-                      style: AppTextStyles.titleMedium.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.lightTextPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: (isDark
+                                    ? AppColors.appleBlue
+                                    : AppColors.royalIndigo)
+                                .withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.airplane,
+                            size: 15,
+                            color: isDark
+                                ? AppColors.appleBlue
+                                : AppColors.royalIndigo,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Travel Budget',
+                              style: AppTextStyles.titleMedium.copyWith(
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              trip.title,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.lightTextSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    // Set / Edit Budget Button
+                    LiquidPop(
+                      onTap: () {
+                        HapticHelper.selectionClick();
+                        SetTravelBudgetSheet.show(
+                          context,
+                          trip: trip,
+                          isDark: isDark,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: (isDark
+                                  ? AppColors.appleBlue
+                                  : AppColors.royalIndigo)
+                              .withValues(alpha: isDark ? 0.22 : 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (isDark
+                                    ? AppColors.appleBlue
+                                    : AppColors.royalIndigo)
+                                .withValues(alpha: 0.35),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              totalBudget > 0
+                                  ? CupertinoIcons.pencil
+                                  : CupertinoIcons.plus,
+                              size: 12,
+                              color: isDark
+                                  ? AppColors.appleBlue
+                                  : AppColors.royalIndigo,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              totalBudget > 0 ? 'Edit Budget' : 'Set Budget',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppColors.appleBlue
+                                    : AppColors.royalIndigo,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    // Warning badge if over 80% or 100%
-                    if (progress >= 1.0 && totalBudget > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.roseExpense.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Exceeded',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.roseExpense,
-                          ),
-                        ),
-                      )
-                    else if (progress >= 0.8 && totalBudget > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.amberWarning.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          '80% Reached',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.amberWarning,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                // Metrics Row: Total Budget, Actual Spent, Remaining
+                // Metrics Grid: 4 Core Metrics
+                // Total Travel Budget, Total Amount Spent, Remaining Budget, Budget Utilization %
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _BudgetColumn(
-                      label: 'Total Budget',
-                      value: CurrencyFormatter.format(totalBudget),
+                      label: 'Travel Budget',
+                      value: totalBudget > 0
+                          ? CurrencyFormatter.format(totalBudget)
+                          : 'Not Set',
                       isDark: isDark,
                     ),
                     _BudgetColumn(
-                      label: 'Actual Spent',
-                      value: CurrencyFormatter.format(actual),
+                      label: 'Total Spent',
+                      value: CurrencyFormatter.format(actualSpent),
                       valueColor: progress >= 1.0
                           ? AppColors.roseExpense
                           : (isDark
@@ -121,17 +198,33 @@ class TravelBudgetView extends StatelessWidget {
                     ),
                     _BudgetColumn(
                       label: 'Remaining',
-                      value: CurrencyFormatter.format(remaining),
-                      valueColor: remaining < 0
+                      value: totalBudget > 0
+                          ? CurrencyFormatter.format(remainingBudget)
+                          : '--',
+                      valueColor: totalBudget <= 0
+                          ? null
+                          : (remainingBudget < 0
+                              ? AppColors.roseExpense
+                              : AppColors.appleGreen),
+                      isDark: isDark,
+                    ),
+                    _BudgetColumn(
+                      label: 'Utilization',
+                      value: totalBudget > 0
+                          ? '${utilizationPct.toStringAsFixed(1)}%'
+                          : '0.0%',
+                      valueColor: progress >= 1.0
                           ? AppColors.roseExpense
-                          : AppColors.appleGreen,
+                          : (progress >= 0.8
+                              ? AppColors.amberWarning
+                              : AppColors.appleGreen),
                       isDark: isDark,
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                // Progress Bar
+                // Visual Budget Progress Indicator
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
@@ -151,13 +244,13 @@ class TravelBudgetView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Estimated vs Actual comparison
+                // Planned Itinerary Estimates vs Actual
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
-                        'Planned Itinerary Estimates: ${CurrencyFormatter.format(estimated)}',
+                        'Planned Estimates: ${CurrencyFormatter.format(estimated)}',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark
@@ -171,13 +264,19 @@ class TravelBudgetView extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${(progress * 100).toInt()}% spent',
+                      totalBudget > 0
+                          ? '${utilizationPct.toStringAsFixed(1)}% utilized'
+                          : 'No limit set',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: isDark
-                            ? AppColors.darkTextMuted
-                            : AppColors.lightTextMuted,
+                        color: progress >= 1.0
+                            ? AppColors.roseExpense
+                            : (progress >= 0.8
+                                ? AppColors.amberWarning
+                                : (isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.lightTextMuted)),
                       ),
                     ),
                   ],
@@ -185,6 +284,144 @@ class TravelBudgetView extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // 2. Appropriate Budget Warning Banners
+          if (totalBudget > 0 && progress >= 1.0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: AppColors.roseExpense.withValues(alpha: isDark ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.roseExpense.withValues(alpha: 0.45),
+                  width: 0.9,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.exclamationmark_triangle_fill,
+                    size: 18,
+                    color: AppColors.roseExpense,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Travel Budget Exceeded',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.roseExpense,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'You have spent ${CurrencyFormatter.format(actualSpent - totalBudget)} over your travel budget of ${CurrencyFormatter.format(totalBudget)} (${utilizationPct.toStringAsFixed(1)}% utilized).',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (totalBudget > 0 && progress >= 0.8)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: AppColors.amberWarning.withValues(alpha: isDark ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.amberWarning.withValues(alpha: 0.45),
+                  width: 0.9,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.exclamationmark_circle_fill,
+                    size: 18,
+                    color: AppColors.amberWarning,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Approaching Budget Limit',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.amberWarning,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'You have utilized ${utilizationPct.toStringAsFixed(1)}% of your travel budget. ${CurrencyFormatter.format(remainingBudget)} remaining.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (totalBudget <= 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                    .withValues(alpha: isDark ? 0.14 : 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: (isDark ? AppColors.appleBlue : AppColors.royalIndigo)
+                      .withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.info_circle_fill,
+                    size: 18,
+                    color: isDark ? AppColors.appleBlue : AppColors.royalIndigo,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No travel budget set for this trip. Tap "Set Budget" to define spending limits and track your remaining balance.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 16),
 
           // 2. Action Buttons (Record Expense, Split Bill)
@@ -271,7 +508,7 @@ class TravelBudgetView extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Split a Bill',
+                          'Split Trip Expense',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -467,7 +704,7 @@ class TravelBudgetView extends StatelessWidget {
 
           // 4. Linked Expenses List
           Text(
-            'Recorded Expenses (${linkedExpenses.length})',
+            'Recorded Expenses (${effectiveExpenses.length})',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -478,7 +715,7 @@ class TravelBudgetView extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          if (linkedExpenses.isEmpty)
+          if (effectiveExpenses.isEmpty)
             GlassCard(
               isDark: isDark,
               padding: const EdgeInsets.all(20.0),
@@ -500,9 +737,9 @@ class TravelBudgetView extends StatelessWidget {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: linkedExpenses.length,
+              itemCount: effectiveExpenses.length,
               itemBuilder: (context, index) {
-                final exp = linkedExpenses[index];
+                final exp = effectiveExpenses[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: GlassCard(

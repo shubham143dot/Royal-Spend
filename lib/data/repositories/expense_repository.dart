@@ -7,6 +7,25 @@ import '../models/expense.dart';
 abstract class IExpenseRepository {
   Future<List<Expense>> getAllExpenses();
   Future<List<Expense>> getExpensesForMonth(int year, int month);
+  Future<List<Expense>> getExpensesForDate(DateTime date, {String? tripId, bool? isIncome}) async {
+    final all = await getAllExpenses();
+    return all.where((e) {
+      final matchesDate = e.date.year == date.year && e.date.month == date.month && e.date.day == date.day;
+      if (!matchesDate) return false;
+      if (tripId != null && e.tripId != tripId) return false;
+      if (isIncome != null && e.isIncome != isIncome) return false;
+      return true;
+    }).toList();
+  }
+  Future<List<Expense>> getExpensesForDateRange(DateTime start, DateTime end, {String? tripId, bool? isIncome}) async {
+    final all = await getAllExpenses();
+    return all.where((e) {
+      if (e.date.isBefore(start) || e.date.isAfter(end)) return false;
+      if (tripId != null && e.tripId != tripId) return false;
+      if (isIncome != null && e.isIncome != isIncome) return false;
+      return true;
+    }).toList();
+  }
   Future<void> addExpense(Expense expense);
   Future<void> updateExpense(Expense expense);
   Future<void> deleteExpense(String id);
@@ -37,7 +56,18 @@ class ExpenseRepository implements IExpenseRepository {
   }
 
   @override
+  Future<List<Expense>> getExpensesForDate(DateTime date, {String? tripId, bool? isIncome}) async {
+    return await _dbHelper.getExpensesForDate(date, tripId: tripId, isIncome: isIncome);
+  }
+
+  @override
+  Future<List<Expense>> getExpensesForDateRange(DateTime start, DateTime end, {String? tripId, bool? isIncome}) async {
+    return await _dbHelper.getExpensesForDateRange(start, end, tripId: tripId, isIncome: isIncome);
+  }
+
+  @override
   Future<void> addExpense(Expense expense) async {
+    await _dbHelper.unmarkRecordAsDeleted(expense.id);
     await _dbHelper.insertExpense(expense);
     unawaited(_syncService.syncExpense(expense).catchError((_) {}));
   }
@@ -73,5 +103,6 @@ class ExpenseRepository implements IExpenseRepository {
   @override
   Future<void> clearAllData() async {
     await _dbHelper.clearAllExpenses();
+    unawaited(_syncService.clearAllCloudExpenses().catchError((_) {}));
   }
 }

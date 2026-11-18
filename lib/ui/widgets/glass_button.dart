@@ -155,17 +155,22 @@ class GlassButton extends StatelessWidget {
               )
             : Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
                     Icon(icon, size: 20, color: textColor),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    label,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.2,
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ],

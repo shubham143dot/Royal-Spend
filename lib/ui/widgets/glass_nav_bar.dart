@@ -97,6 +97,7 @@ class _GlassFloatingNavBarState extends State<GlassFloatingNavBar>
 
   late final AnimationController _controller;
   late final Listenable _capsuleRepaint;
+  late final Listenable _dragRepaint;
   late int _fromIndex;
   late int _toIndex;
 
@@ -126,6 +127,7 @@ class _GlassFloatingNavBarState extends State<GlassFloatingNavBar>
     )..addStatusListener(_onControllerStatus);
     _fxTicker = createTicker(_onFxTick);
     _capsuleRepaint = Listenable.merge([_controller, _dragLeft, _dragFx]);
+    _dragRepaint = Listenable.merge([_dragLeft, _dragFx]);
   }
 
   void _onControllerStatus(AnimationStatus status) {
@@ -393,35 +395,48 @@ class _GlassFloatingNavBarState extends State<GlassFloatingNavBar>
                         constraints.maxWidth - _innerPadding * 2;
                     final itemWidth = contentWidth / _items.length;
 
-                    // Frosted transparent glass bar
-                    final glassBar = DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: barRadius,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x18000000),
-                            blurRadius: 28,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: barRadius,
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: highContrast ? 0 : 24,
-                            sigmaY: highContrast ? 0 : 24,
-                          ),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: glassfrostFill,
-                              borderRadius: barRadius,
-                              border: Border.all(
-                                color: glassfrostBorder,
-                                width: 1.0,
-                              ),
+                    // Frosted transparent glass bar with RepaintBoundary and Dark Mode GPU optimization
+                    final glassBar = RepaintBoundary(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: barRadius,
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x18000000),
+                              blurRadius: 28,
+                              offset: Offset(0, 10),
                             ),
-                          ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: barRadius,
+                          child: isDark
+                              ? DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xEE18181A),
+                                    borderRadius: barRadius,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.12),
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                )
+                              : BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: highContrast ? 0 : 18,
+                                    sigmaY: highContrast ? 0 : 18,
+                                  ),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: glassfrostFill,
+                                      borderRadius: barRadius,
+                                      border: Border.all(
+                                        color: glassfrostBorder,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                     );
@@ -442,7 +457,7 @@ class _GlassFloatingNavBarState extends State<GlassFloatingNavBar>
                                   buttonActiveColor: buttonActiveColor,
                                   buttonNeutralColor: buttonNeutralColor,
                                   reduceMotion: reduceMotion,
-                                  lensRepaint: _capsuleRepaint,
+                                  lensRepaint: _dragRepaint,
                                   lensFactor: () => _lensFactor(i, itemWidth),
                                   lensIconGain: _lensIconGain,
                                   lensLabelGain: _lensLabelGain,

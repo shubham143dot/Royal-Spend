@@ -74,10 +74,12 @@ class TransactionDetailModal extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
             // Top Notch Handle
             Container(
               width: 44,
@@ -291,7 +293,8 @@ class TransactionDetailModal extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
 
     return sheetContent;
   }

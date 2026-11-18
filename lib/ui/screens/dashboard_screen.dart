@@ -16,6 +16,7 @@ import '../../data/models/quick_log_preset.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/quick_log_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../widgets/expense_category_selector.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/liquid_pop.dart';
 import '../widgets/quick_log/add_edit_quick_log_sheet.dart';
@@ -175,6 +176,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // 3-Option Category Selector: Personal | Travel | Mix
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+              child: ExpenseCategorySelector(isDark: isDark),
             ),
           ),
 

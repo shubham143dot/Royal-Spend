@@ -54,6 +54,20 @@ class SettingsRepository {
     await prefs.setString(AppConstants.keyUserName, name);
   }
 
+  Future<String?> getUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(AppConstants.keyUserEmail);
+  }
+
+  Future<void> setUserEmail(String? email) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (email == null || email.trim().isEmpty) {
+      await prefs.remove(AppConstants.keyUserEmail);
+    } else {
+      await prefs.setString(AppConstants.keyUserEmail, email.trim().toLowerCase());
+    }
+  }
+
   Future<double> getMonthlyBudget() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getDouble(AppConstants.keyMonthlyBudget) ?? AppConstants.defaultMonthlyBudget;
@@ -127,5 +141,65 @@ class SettingsRepository {
   Future<void> setIsAuthenticated(bool authenticated) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.keyIsAuthenticated, authenticated);
+  }
+
+  Future<String> getSelectedCategoryScope({String? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = userId != null && userId.isNotEmpty
+          ? '${AppConstants.keySelectedCategoryScope}_$userId'
+          : AppConstants.keySelectedCategoryScope;
+      return prefs.getString(key) ?? AppConstants.defaultCategoryScope;
+    } catch (_) {
+      return AppConstants.defaultCategoryScope;
+    }
+  }
+
+  Future<void> setSelectedCategoryScope(String scope, {String? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = userId != null && userId.isNotEmpty
+          ? '${AppConstants.keySelectedCategoryScope}_$userId'
+          : AppConstants.keySelectedCategoryScope;
+      await prefs.setString(key, scope);
+    } catch (_) {}
+  }
+
+  Future<bool> isAppLockEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(AppConstants.keyAppLockEnabled) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> setAppLockEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(AppConstants.keyAppLockEnabled, enabled);
+    } catch (_) {}
+  }
+
+  /// Persists the last authenticated user ID to reliably detect account switching
+  /// across app terminations and prevent cross-account local data leakage.
+  Future<String?> getLastUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('key_last_authenticated_user_id');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setLastUserId(String? userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (userId == null || userId.trim().isEmpty) {
+        await prefs.remove('key_last_authenticated_user_id');
+      } else {
+        await prefs.setString('key_last_authenticated_user_id', userId.trim());
+      }
+    } catch (_) {}
   }
 }
