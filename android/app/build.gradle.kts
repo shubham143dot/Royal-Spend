@@ -52,12 +52,12 @@ android {
             storePassword = keystoreProperties.getProperty("storePassword")
             val storePath = keystoreProperties.getProperty("storeFile")
             if (!storePath.isNullOrEmpty()) {
-                val f = file(storePath)
+                val candidate1 = file(storePath).canonicalFile
+                val candidate2 = rootProject.file(storePath).canonicalFile
                 storeFile = when {
-                    f.isAbsolute -> f
-                    rootProject.file(storePath).exists() -> rootProject.file(storePath)
-                    file(storePath).exists() -> file(storePath)
-                    else -> rootProject.file(storePath)
+                    candidate1.exists() -> candidate1
+                    candidate2.exists() -> candidate2
+                    else -> candidate1
                 }
             }
         }
