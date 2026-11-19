@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "726663632525-4dp3lmf6u388g4ivqqbn0gbpvk6nf68m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalshubham.royalspend.royal_spend",
+            "certificate_hash": "44d65e07d2b305b48a45ea44fa4742898f9dffe3"
+          }
+        },
+        {
           "client_id": "726663632525-a4mojj90c3lue8jbgt2met5upaqod2ht.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -35,6 +43,14 @@
           "android_info": {
             "package_name": "com.royalshubham.royalspend.royal_spend",
             "certificate_hash": "f9ea42474daa6d2cc07a7a1e952b8f58fc3cc695"
+          }
+        },
+        {
+          "client_id": "726663632525-rgrc3g6grln0t13fg3o9mbmllt1lm0kb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalshubham.royalspend.royal_spend",
+            "certificate_hash": "e17b8e5508e0c92df685fc4a2c15b41cb8773219"
           }
         },
         {
