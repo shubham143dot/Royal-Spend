@@ -16,6 +16,12 @@ if (localPropertiesFile.exists()) {
 }
 val mapsApiKey: String = localProperties.getProperty("maps.apiKey") ?: ""
 
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.royalshubham.royalspend.royal_spend"
     compileSdk = flutter.compileSdkVersion
@@ -39,10 +45,35 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storePassword = keystoreProperties.getProperty("storePassword")
+            val storePath = keystoreProperties.getProperty("storeFile")
+            if (!storePath.isNullOrEmpty()) {
+                val f = file(storePath)
+                storeFile = when {
+                    f.isAbsolute -> f
+                    rootProject.file(storePath).exists() -> rootProject.file(storePath)
+                    file(storePath).exists() -> file(storePath)
+                    else -> rootProject.file(storePath)
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Signing with debug keys so `flutter run --release` works smoothly on test devices
-            signingConfig = signingConfigs.getByName("debug")
+            val hasReleaseKey = keystorePropertiesFile.exists() &&
+                !keystoreProperties.getProperty("keyAlias").isNullOrEmpty() &&
+                !keystoreProperties.getProperty("storePassword").isNullOrEmpty()
+
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

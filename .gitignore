@@ -53,6 +53,9 @@ android/build/
 *.env
 *.env.*
 **/local.properties
+**/key.properties
 key.properties
 *.jks
 *.keystore
+**/*.jks
+**/*.keystore

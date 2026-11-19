@@ -1,0 +1,12 @@
+# ==============================================================================
+# Royal Spend - Android Release Signing Configuration Template
+# ==============================================================================
+# 1. Copy this file to: android/key.properties
+# 2. Fill in the passwords and alias you choose when generating upload-keystore.jks
+# 3. Keep this file private. It is automatically ignored by .gitignore.
+# ==============================================================================
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=app/upload-keystore.jks
