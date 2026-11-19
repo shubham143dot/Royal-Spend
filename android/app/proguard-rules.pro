@@ -30,3 +30,4 @@
 # Suppress common Android warnings
 -dontwarn sun.misc.**
 -dontwarn java.lang.instrument.**
+-dontwarn com.google.android.play.core.**

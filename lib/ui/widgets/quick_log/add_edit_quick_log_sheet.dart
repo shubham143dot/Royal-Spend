@@ -103,10 +103,9 @@ class _AddEditQuickLogSheetState extends State<AddEditQuickLogSheet> {
 
   IconData get _resolvedIcon {
     if (_selectedIconCodePoint != null) {
-      return IconData(
-        _selectedIconCodePoint!,
-        fontFamily: 'CupertinoIcons',
-        fontPackage: 'cupertino_icons',
+      return ExpenseCategory.resolveIcon(
+        _selectedIconCodePoint,
+        _currentCategory.icon,
       );
     }
     return _currentCategory.icon;

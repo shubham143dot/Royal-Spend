@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../../core/constants/default_categories.dart';
+import 'expense_category.dart';
 
 /// Represents a 1-tap shortcut preset for logging frequent expenses.
 class QuickLogPreset {
@@ -20,14 +21,11 @@ class QuickLogPreset {
   });
 
   IconData get icon {
+    final defaultIcon = DefaultCategories.getCategoryById(categoryId).icon;
     if (iconCodePoint != null) {
-      return IconData(
-        iconCodePoint!,
-        fontFamily: 'CupertinoIcons',
-        fontPackage: 'cupertino_icons',
-      );
+      return ExpenseCategory.resolveIcon(iconCodePoint, defaultIcon);
     }
-    return DefaultCategories.getCategoryById(categoryId).icon;
+    return defaultIcon;
   }
 
   Color get color {
