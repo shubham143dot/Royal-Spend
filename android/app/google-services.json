@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "726663632525-ntssmcer5hf8mf8759dcgkrbs18ubfhi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalshubham.royalspend.royal_spend",
+            "certificate_hash": "1e9eb990b85ed483dc274578935d3726e0d675da"
+          }
+        },
+        {
+          "client_id": "726663632525-rd7b7hab81aclc9ntsd5rc34ogt21qu3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalshubham.royalspend.royal_spend",
+            "certificate_hash": "f9ea42474daa6d2cc07a7a1e952b8f58fc3cc695"
+          }
+        },
+        {
           "client_id": "726663632525-6i38tdrp0omov8rrsl5v2989vo0e94qu.apps.googleusercontent.com",
           "client_type": 3
         }
